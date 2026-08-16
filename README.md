@@ -47,9 +47,12 @@ When the context budget is approached, the middleware retrieves the most relevan
 ## Quickstart
 
 ```bash
+pip install memory-middleware           # from PyPI
+# or from source:
+git clone https://github.com/fufuxiaokeai/memory-middleware.git && cd memory-middleware
 pip install -e ".[dev]"
 python examples/quickstart_offline.py   # fully offline, scripted models
-pytest                                  # 74 offline tests, no services, <1s
+pytest                                  # 79 offline tests, no services, <1s
 ```
 
 To use with a real model (DeepSeek):
@@ -115,7 +118,7 @@ official billing fields `usage.prompt_cache_hit_tokens / prompt_cache_miss_token
 (¥0.02 per 1M for cache-hit input, ¥1.0 for miss, ¥2.0 for output — configurable in
 `memory_middleware/cost.py`).
 
-**Offline suite** — 74 tests, ~0.9 s, zero services, zero API keys.
+**Offline suite** — 79 tests, ~1 s, zero services, zero API keys.
 
 **End-to-end with real DeepSeek (deepseek-v4-flash), 4-turn conversation**
 (integration test `tests/integration/test_cost_tracking.py`, run 2026-08-16):

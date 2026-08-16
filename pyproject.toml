@@ -13,7 +13,7 @@ keywords = ["llm", "memory", "langgraph", "agent", "long-term-memory"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
-    "Framework :: LangChain",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
 dependencies = [

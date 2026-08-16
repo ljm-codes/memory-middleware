@@ -47,9 +47,12 @@
 ## 快速开始
 
 ```bash
+pip install memory-middleware           # 从 PyPI 安装
+# 或源码安装：
+git clone https://github.com/fufuxiaokeai/memory-middleware.git && cd memory-middleware
 pip install -e ".[dev]"
 python examples/quickstart_offline.py   # 完全离线，脚本化假模型
-pytest                                  # 74 个离线测试，零服务，<1s
+pytest                                  # 79 个离线测试，零服务，<1s
 ```
 
 接入真实模型（DeepSeek）：
@@ -111,7 +114,7 @@ agent = create_agent(
 `usage.prompt_cache_hit_tokens / prompt_cache_miss_tokens`
 （命中 ¥0.02/M、未命中 ¥1/M、输出 ¥2/M，`memory_middleware/cost.py` 可配置）。
 
-**离线套件** —— 74 个测试，约 0.9 秒，零服务、零 API key。
+**离线套件** —— 79 个测试，约 1 秒，零服务、零 API key。
 
 **真实 DeepSeek 端到端（deepseek-v4-flash，4 轮对话）**
 （集成测试 `tests/integration/test_cost_tracking.py`，2026-08-16 运行）：
