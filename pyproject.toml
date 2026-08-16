@@ -29,7 +29,7 @@ dependencies = [
 redis = ["redis>=5"]
 rabbitmq = ["aio-pika>=9"]
 dashscope = ["dashscope>=1.25"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "build>=1", "twine>=5"]
 
 [tool.setuptools.packages.find]
 include = ["memory_middleware*"]
