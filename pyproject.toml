@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memory-middleware"
+version = "0.1.0"
+description = "BalancedMultiDimensionMemory — a LangGraph AgentMiddleware for long-term LLM memory (Ebbinghaus decay + RAG staging + user profile consolidation)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["llm", "memory", "langgraph", "agent", "long-term-memory"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Framework :: LangChain",
+]
+
+dependencies = [
+    "langchain>=1.0",
+    "langchain-core>=1.3",
+    "langgraph>=1.0",
+    "pydantic>=2",
+    "sqlite-vec>=0.1.7",
+]
+
+[project.optional-dependencies]
+# 生产可选组件：Redis 游标 / RabbitMQ 保底 / 真实嵌入
+redis = ["redis>=5"]
+rabbitmq = ["aio-pika>=9"]
+dashscope = ["dashscope>=1.25"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["memory_middleware*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "integration: 需要真实 LLM API（DeepSeek），默认不跑。用法：python -m pytest -m integration",
+]
+filterwarnings = [
+    # 集成测试用低阈值加速全链路（评测场景），屏蔽对应配置告警
+    "ignore:对于 messages 模式，总结阈值过低",
+    "ignore:对于 fraction 模式，总结阈值过低",
+]
