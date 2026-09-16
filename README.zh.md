@@ -238,7 +238,7 @@ BMDM 把画像与片段持久化在 store。会话 1 陈述事实，会话 2（�
 
 ## 上游项目
 
-本包是从 [fireflymall-ai-customer-service](https://github.com/fufuxiaokeai/fireflymall-ai-customer-service)
+本包是从 [fireflymall-ai-customer-service](https://github.com/lijia-ming/fireflymall-ai-customer-service)
 （生产级智能客服 Agent，LangGraph + DeepSeek）中解耦提炼的记忆中间件。上游仓库保留
 业务耦合版本（Redis / RabbitMQ / DashScope 接线），并含可复现的缓存率基准
 （`bench_cache_rate.py`）——上表数据即出自该基准。
