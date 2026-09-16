@@ -2,7 +2,7 @@
 
 A **LangGraph `AgentMiddleware`** that gives LLM agents long-term memory — powered by Ebbinghaus forgetting curves, multi-dimensional weighted scoring, LLM-driven parameter tuning, and incremental user-profile consolidation.
 
-> Extracted as a standalone package from the production project [fireflymall-ai-customer-service](https://github.com/fufuxiaokeai/fireflymall-ai-customer-service). Works offline out of the box — **zero external services required** for tests and demo; Redis / RabbitMQ / real embeddings are optional plug-ins.
+> Extracted as a standalone package from the production project [fireflymall-ai-customer-service](https://github.com/lijia-ming/fireflymall-ai-customer-service). Works offline out of the box — **zero external services required** for tests and demo; Redis / RabbitMQ / real embeddings are optional plug-ins.
 
 ---
 
