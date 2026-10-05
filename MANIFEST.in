@@ -1,0 +1,4 @@
+# sdist 里带上复现脚本：README 的实测数字（三方对比 / 多维评分 / 打分表）都是这些脚本跑出来的，
+# 说"可复现"就该把脚本一起发出去。只带脚本，不带 benchmarks/output/ 下的跑分数据与图
+# （那部分在 GitHub 仓库里，见 Project-URLs）。
+recursive-include benchmarks *.py
