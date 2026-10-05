@@ -52,7 +52,11 @@ if not os.environ.get('DEEPSEEK_API_KEY'):
 
 
 class UsageHandler(BaseCallbackHandler):
-    """采集每次 LLM 调用的 usage（含 prompt_cache_hit/miss_tokens，见 memory_middleware.cost）"""
+    """采集每次 LLM 调用的 usage（含 prompt_cache_hit/miss_tokens，见 memory_middleware.cost）。
+
+    每条记录带 `tag`：main=主对话，split/summary/param=中间件内部三类调用——
+    这样"总量里有多少花在中间件自身"可以直接从采集结果分组，不必靠输入长度猜。
+    """
 
     def __init__(self):
         self.usage_list: list[dict] = []
@@ -61,14 +65,28 @@ class UsageHandler(BaseCallbackHandler):
         llm_output = getattr(response, 'llm_output', None) or {}
         usage = llm_output.get('token_usage') or {}
         if usage:
+            tags = kwargs.get('tags') or []
             self.usage_list.append({
                 'hit': int(usage.get('prompt_cache_hit_tokens', 0) or 0),
                 'miss': int(usage.get('prompt_cache_miss_tokens', 0) or 0),
                 'out': int(usage.get('completion_tokens', 0) or 0),
+                'tag': next((t for t in tags if t in ('main', 'split', 'summary', 'param')), '?'),
             })
 
+    def by_tag(self) -> dict:
+        """按 tag 汇总：{tag: {'calls': n, 'in': tok, 'out': tok, 'cost': ¥}}"""
+        from memory_middleware.cost import cost_cny
+        agg: dict[str, dict] = {}
+        for u in self.usage_list:
+            a = agg.setdefault(u['tag'], {'calls': 0, 'in': 0, 'out': 0, 'cost': 0.0})
+            a['calls'] += 1
+            a['in'] += u['hit'] + u['miss']
+            a['out'] += u['out']
+            a['cost'] += cost_cny(u)
+        return agg
 
-def _make_model(usage_handler, schema=None):
+
+def _make_model(usage_handler, schema=None, tag='main'):
     """真实 DeepSeek 模型（挂用量采集回调）；schema 非空时包结构化输出。
 
     注意顺序：with_structured_output 在前、with_config 包最外层——
@@ -81,7 +99,7 @@ def _make_model(usage_handler, schema=None):
     )
     if schema is not None:
         llm = llm.with_structured_output(schema)
-    return llm.with_config({'callbacks': [usage_handler]})
+    return llm.with_config({'callbacks': [usage_handler], 'tags': [tag]})
 
 
 @pytest.fixture(scope='module')
@@ -93,10 +111,10 @@ def usage_handler():
 def models(usage_handler):
     """四路真实模型：主对话（chat）/切分/总结/调参"""
     return {
-        'chat': _make_model(usage_handler),
-        'split': _make_model(usage_handler, SummaryMemoryAi),
-        'summary': _make_model(usage_handler, UserProfile),
-        'param': _make_model(usage_handler, TimeMemoryFormulaParam),
+        'chat': _make_model(usage_handler, tag='main'),
+        'split': _make_model(usage_handler, SummaryMemoryAi, tag='split'),
+        'summary': _make_model(usage_handler, UserProfile, tag='summary'),
+        'param': _make_model(usage_handler, TimeMemoryFormulaParam, tag='param'),
     }
 
 
