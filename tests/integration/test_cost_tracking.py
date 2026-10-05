@@ -37,9 +37,19 @@ class TestCostTracking:
 
         print(f"\n===== 费用统计（{len(usages)} 次调用，现行价 ¥0.02/1/2 per 1M tokens）=====")
         for i, u in enumerate(usages, 1):
-            print(f"  调用{i:>2}: 输入 {u['hit'] + u['miss']:>6} tok"
+            print(f"  调用{i:>2} [{u['tag']:<7}]: 输入 {u['hit'] + u['miss']:>6} tok"
                   f"（命中 {u['hit']:>5} / 未命中 {u['miss']:>5}）"
                   f" | 输出 {u['out']:>4} tok | 命中率 {hit_rate(u) * 100:5.1f}%"
                   f" | ¥{cost_cny(u):.6f}")
         print(f"  合计: 输入 {total_in} tok / 输出 {total_out} tok"
               f" / 平均命中率 {avg_hit_rate * 100:.1f}% / ¥{total_cost:.6f}")
+        # 主对话 vs 中间件内部：README 的"总量里多少花在中间件自身"按这里分组取数
+        agg = usage_handler.by_tag()
+        print("  --- 按来源分组 ---")
+        for tag in ('main', 'split', 'summary', 'param'):
+            a = agg.get(tag)
+            if a:
+                print(f"  {tag:<8} {a['calls']:>2} 次 | 输入 {a['in']:>6} tok / 输出 {a['out']:>4} tok"
+                      f" | ¥{a['cost']:.6f} ({a['cost'] / total_cost * 100:.0f}%)")
+        internal = sum(a['calls'] for t, a in agg.items() if t != 'main')
+        print(f"  中间件内部调用合计: {internal} 次")

@@ -15,6 +15,13 @@
 
 结果落盘：benchmarks/output/recall_results.json（增量保存，可断点续跑）
 依赖 .env：DEEPSEEK_API_KEY（必需）；DASHSCOPE_API_KEY（--embeddings dashscope 时）
+
+留档规则（2026-10-05 起）：
+1. 每条记录带 `_meta`（版本 / 提交 / 运行时刻 / 完整口径参数）——答"这条数据是哪版哪时什么参数跑的"。
+2. **判定输入与判定结果一起留档**：`judge_input = {keywords, answers}`，判定是"答案里有没有这个关键词"。
+   没有答案原文，判定就无法事后复核，换了判分口径只能重跑（2026-10-05 就吃过这个亏：判分对空格敏感，
+   历史答案没存，只能重跑；`--rejudge` 可在不跑模型的前提下用新口径重判已留档的答案）。
+3. 判定前做空白归一化（`_norm`）——只消格式差异，不放宽语义。
 """
 import argparse
 import asyncio
@@ -22,8 +29,11 @@ import json
 import math
 import os
 import pathlib
+import re
+import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
@@ -306,9 +316,14 @@ class ConvRunner:
         raise NotImplementedError
 
     def ask_questions(self, values: list[str]) -> list[bool]:
-        """最后 len(values) 条回复中是否包含事实关键词（4 条或 8 条评测通用）"""
-        last_replies = self.replies[-len(values):]
-        return [any(v in r for r in last_replies) for v in values]
+        """最后 len(values) 条回复中是否包含事实关键词（4 条或 8 条评测通用）。
+
+        匹配前做**空白归一化**：`'3 月 14 日'` 与 `'3月14日'`、`'Mate 60'` 与 `'Mate60'` 视为同一答案。
+        动机（2026-10-05 实测）：关键词带空格，模型换个写法就被判成未召回——那是**判分假阴性**，
+        不是记忆或模型的缺陷。归一化只消掉格式差异，不放宽语义（不接受"三月十四日"这类改写）。
+        """
+        last_replies = [_norm(r) for r in self.replies[-len(values):]]
+        return [any(_norm(v) in r for r in last_replies) for v in values]
 
 
 class BaselineRunner(ConvRunner):
@@ -468,6 +483,8 @@ class BMDMRunner(ConvRunner):
             'fragments': [{'id': fid, 'theme': (meta or {}).get('theme', '')} for _, meta, fid in rows],
             'injected_ids': injected,
             'system_prompt': self.state.get('system_prompt', ''),
+            # 每次注入事件的打分表（含全部事件，不只最后一次）：R/T/F 各维与加权贡献
+            'scoring_log': list(self.mw._scoring_log),
         }
 
     async def turn(self, text: str):
@@ -516,6 +533,10 @@ async def _run_configs(turns: list[str], values: list[str], tmp_dir: pathlib.Pat
             await runner.turn(text)
         hits = runner.ask_questions(values)
         out[name] = summarize_usage(runner, handler, hits, len(turns))
+        # 判定输入与判定结果一起留档：没有答案原文，判定就无法事后复核/改判
+        # （2026-10-05 踩过——判分对空格敏感，而历史答案没存 → 只能重跑，历史数字救不回来）
+        out[name]['judge_input'] = {'keywords': list(values),
+                                    'answers': runner.replies[-len(values):]}
         m = out[name]
         print(f"    {name:<10} 召回 {sum(hits)}/{len(values)} {hits} | "
               f"调用 {m['llm_calls']}（内部 {m['internal_calls']}）事件 {m['events']} | "
@@ -524,6 +545,8 @@ async def _run_configs(turns: list[str], values: list[str], tmp_dir: pathlib.Pat
             payload = runner.memory_payload()
             out[name]['memory_payload'] = payload
             if name == 'bmdm':
+                # 打分表同时进 JSON：留档可解析（日志里另有一份人读的文本）
+                out[name]['scoring_log'] = list(runner.mw._scoring_log)
                 print(f"      [记忆体积] 注入片段 {payload['injected_tokens']} tok"
                       f"（{payload['injected_chars']} 字符）· 画像 {payload['profile_tokens']} tok")
             else:
@@ -536,6 +559,7 @@ async def _run_configs(turns: list[str], values: list[str], tmp_dir: pathlib.Pat
             print(f"      [诊断] 检索主题={d['theme']!r}")
             print(f"      [诊断] 片段库={d['fragments']}")
             print(f"      [诊断] 注入过的片段 id={d['injected_ids']}")
+            print_scoring_log(d.get('scoring_log') or [])
             print(f"      [诊断] 最终系统提示词=\n{d['system_prompt']}")
     return out
 
@@ -618,18 +642,90 @@ async def run_cross_session(length: int, sample: int, embeddings) -> dict:
             print(f"  [会话2结束] BMDM 最后提示词: {runner.state['system_prompt'][:300]!r}")
         hits = runner.ask_questions(values)
         out[name] = summarize_usage(runner, handler, hits, len(turns2))
+        out[name]['judge_input'] = {'keywords': list(values),
+                                    'answers': runner.replies[-len(values):]}
         m = out[name]
         print(f"  [跨会话 length={length} sample={sample}] {name:<10} 召回 {sum(hits)}/4 {hits} | "
               f"调用 {m['llm_calls']}（内部 {m['internal_calls']}）事件 {m['events']}")
     return out
 
 
-def save_results(results: dict):
+_WS_RE = re.compile(r'\s+')
+
+
+def _norm(s: str) -> str:
+    """判分归一化：去掉全部空白（只消格式差异，不放宽语义）"""
+    return _WS_RE.sub('', s or '')
+
+
+def _pkg_version() -> str:
+    """独立包版本（跑分 _meta 戳；取不到就 unknown）"""
+    try:
+        from importlib.metadata import version
+        return version('memory-middleware')
+    except Exception:
+        return 'unknown'
+
+
+def _git_commit() -> str | None:
+    """当前仓库短 SHA（跑分 _meta 戳；取不到就 None）"""
+    try:
+        out = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                             cwd=OUT_DIR.parent.parent, capture_output=True,
+                             text=True, timeout=5)
+        return out.stdout.strip() or None
+    except Exception:
+        return None
+
+
+def run_meta(tag: str) -> dict:
+    """本次跑分的「版本 + 时间 + 口径」戳。
+
+    写在**每条记录内部**而不是文件头：save_results 是 existing.update(results)，
+    不同 key 会在不同时间被重跑覆盖——记录级戳才答得上"这条数据是哪版、哪时、什么参数跑的"。
+    """
+    return {
+        'version': _pkg_version(),
+        'git_commit': _git_commit(),
+        'run_at': datetime.now(timezone.utc).astimezone().isoformat(timespec='seconds'),
+        'tag': tag,
+        'bmdm_config': {k: (list(v) if isinstance(v, tuple) else v)
+                        for k, v in BMDM_OVERRIDES.items()},
+        'summarize_config': dict(SUMMARIZE_OVERRIDES),
+    }
+
+
+def print_scoring_log(scoring_log: list) -> None:
+    """打印每次注入事件的打分表：调参值 + 候选的 R/T/F 与各维加权贡献（`*` = 入选）。
+
+    回答"多维评分里哪一维在决定入选"——纯诊断输出，不参与任何判定。
+    """
+    if not scoring_log:
+        return
+    print(f"      [诊断] 打分表（{len(scoring_log)} 次注入事件；αR/βT/γF 为该维的实际加权贡献）")
+    for i, ev in enumerate(scoring_log, 1):
+        p = ev['params']
+        print(f"        事件{i}: α={p['alpha']} β={p['beta']} γ={p['gamma']} δ={p['delta']} "
+              f"| w0={p['w0']} w1={p['w1']} w2={p['w2']}")
+        for c in sorted(ev['candidates'], key=lambda x: -x['s']):
+            mark = '*' if c['picked'] else ' '
+            print(f"          {mark} id={c['id']} [{str(c['theme'])[:14]}] "
+                  f"{','.join(c['type'] or [])[:18]:<18} str={c['strengthen_num']} "
+                  f"age={c['age_s']:>7.1f}s | R={c['r']:.3f} T={c['t']:.3f} F={c['f']:.3f} | "
+                  f"αR={c['alpha_r']:.3f} βT={c['beta_t']:.3f} γF={c['gamma_f']:.3f} → S={c['s']:.3f}")
+
+
+def save_results(results: dict, tag: str = ''):
+    """增量保存：本次跑的键盖新戳，已有键连同它们的旧戳原样保留"""
     OUT_DIR.mkdir(exist_ok=True)
     path = OUT_DIR / 'recall_results.json'
     existing = {}
     if path.exists():
         existing = json.loads(path.read_text(encoding='utf-8'))
+    meta = run_meta(tag)
+    for record in results.values():
+        if isinstance(record, dict) and '_meta' not in record:
+            record['_meta'] = meta
     existing.update(results)
     path.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding='utf-8')
 
@@ -804,6 +900,13 @@ async def main():
     parser.add_argument('--summarize-max-tokens', type=int, default=None,
                         help='官方摘要输出上限（默认不限；早期版本误用聊天模型的 100）')
     parser.add_argument('--tag', default='', help='结果 key 后缀（区分不同门控口径，避免互相覆盖）')
+    parser.add_argument('--rejudge', action='store_true',
+                        help='不跑模型，用当前判分规则重判已留档的答案（judge_input）并报告差异；'
+                             '只对 2026-10-05 之后留了答案原文的记录有效')
+    parser.add_argument('--no-chart', action='store_true',
+                        help='跑完不重画图表。默认会用**本次 tag** 重画对应图——诊断/临时跑分请加这个开关，'
+                             '否则会把已发布的 detail_retention.png 覆盖成本次单样本的口径'
+                             '（恢复：--chart-only --tag=-fixed3）')
     parser.add_argument('--fresh', action='store_true',
                         help='跑之前清空 benchmarks/output/tmp：片段 id 计数器在内存 KV 里、向量库是持久的，'
                              '复用旧库会让 id 从 1 重算并撞 UNIQUE 约束（生产中 Redis 计数丢失同理）')
@@ -811,6 +914,9 @@ async def main():
 
     if args.chart_only:
         chart_only(args.tag)
+        return
+    if args.rejudge:
+        rejudge()
         return
 
     if not os.environ.get('DEEPSEEK_API_KEY'):
@@ -872,15 +978,51 @@ async def main():
                 key = f'{length}-{sample}' + args.tag
                 print(f'===== 会话长度={length}，样本={sample} =====')
                 results[key] = await run_one(length, sample, embeddings)
-            save_results(results)  # 增量保存：中断后可 --chart-only 或续跑
+            save_results(results, args.tag)  # 增量保存：中断后可 --chart-only 或续跑
 
     print('\n===== 汇总 =====')
     for key, value in results.items():
         print(f"  {key}: " + ", ".join(
             f"{cfg}: {v['recall']}/{len(v['hits'])} ({v['input_tokens']} in, {v['llm_calls']} calls)"
-            for cfg, v in value.items()))
+            for cfg, v in value.items() if cfg in ('baseline', 'summarize', 'bmdm')))
     # 出图看全量（含历史口径），但只画本次 tag 那一档——不同口径绝不混进同一条折线
-    make_all_charts(load_results(), tag=args.tag)
+    if args.no_chart:
+        print('（--no-chart：跳过出图）')
+    else:
+        make_all_charts(load_results(), tag=args.tag)
+
+
+def rejudge() -> None:
+    """用**当前判分规则**重判已留档的答案（不跑模型，零成本）。
+
+    只对带 `judge_input` 的记录有效——2026-10-05 之前的跑分没存答案原文，无法改判，只能重跑。
+    本命令只出报告、不改数据（避免无意中改写归档）。
+    """
+    results = load_results()
+    total, changed = 0, []
+    for key, rec in results.items():
+        if not isinstance(rec, dict):
+            continue
+        for cfg in ('baseline', 'summarize', 'bmdm'):
+            v = rec.get(cfg)
+            if not isinstance(v, dict):
+                continue
+            ji = v.get('judge_input')
+            if not ji:
+                continue
+            total += 1
+            old = v.get('hits')
+            new = [any(_norm(k) in _norm(a) for a in ji['answers']) for k in ji['keywords']]
+            if old != new:
+                changed.append((key, cfg, old, new))
+    print(f'可重判记录 {total} 条（{len(results)} 个 key）')
+    if not total:
+        print('（没有带 judge_input 的记录：2026-10-05 之前的跑分未留档答案原文，只能重跑）')
+    print(f'按当前判分规则（空白归一化）判定发生变化的：{len(changed)} 条')
+    for key, cfg, old, new in changed:
+        o = ''.join('1' if h else '0' for h in old)
+        n = ''.join('1' if h else '0' for h in new)
+        print(f'  {key} [{cfg}] {sum(old)}→{sum(new)} ({o} → {n})')
 
 
 def chart_only(tag: str = ''):

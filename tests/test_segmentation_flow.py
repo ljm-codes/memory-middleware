@@ -208,3 +208,23 @@ class TestCursorContinuation:
         assert recovery.split_errors[0][0] == 'u1'
         assert isinstance(recovery.split_errors[0][2], RuntimeError)
         assert asyncio.run(kv_store.aget('memory_fragments:u1')) is None
+
+    def test_split_none_result_returns_none(self, build_middleware, kv_store):
+        """结构化输出解析失败：模型**返回 None 而不抛异常**——同样按失败降级，不崩在 .current_theme
+
+        2026-10-05 基准实测踩到：None 落在 try/except 之外 → AttributeError 掀掉整轮对话。
+        """
+        from helpers import FakeSplitLLM, SpyRecovery
+
+        recovery = SpyRecovery()
+        mw, vec_store, _ = build_middleware(recovery=recovery)
+        mw.memory_spliter.split_llm = FakeSplitLLM(None)   # 不抛异常，只返回 None
+
+        docs = asyncio.run(mw.memory_spliter.atext_to_document(text=_mature_messages(4), user='u1'))
+
+        assert docs is None
+        assert len(recovery.split_errors) == 1
+        assert recovery.split_errors[0][0] == 'u1'
+        assert '空结果' in str(recovery.split_errors[0][2])
+        assert asyncio.run(kv_store.aget('memory_fragments:u1')) is None
+        assert not mw.memory_spliter.dialogue_theme_by_user.get('u1'), '失败时不该写入主题'

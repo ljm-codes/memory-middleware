@@ -140,15 +140,21 @@ class MemoryFragmentsAiSpliter:
             content_text.append(content)
         prompt = "请将以下文本按照不同主题进行切分区域：\n" + "\n".join(text)
         try:
-            result = await self.split_llm.ainvoke([
+            splited_texts = await self.split_llm.ainvoke([
                 SystemMessage(content=self.prompt),
                 HumanMessage(content=prompt),
             ])
-            splited_texts = result
         except Exception as e:
             logger.error(f"在记忆分片时出现了异常：{e}")
             await self._recovery.on_split_error(user_id, messages, e)
             # 返回 None 而非保底切分：SummaryMemoryAi 涉及类型与主题，无法可靠兜底
+            return None
+        if splited_texts is None:
+            # with_structured_output 解析失败时返回 None（**不抛异常**）——必须走同一条失败路径：
+            # 否则下面取 .current_theme 会抛 AttributeError，把整轮对话掀掉（2026-10-05 基准实测踩到）
+            err = ValueError('切分模型返回空结果（结构化输出解析失败）')
+            logger.error(f"在记忆分片时出现空结果：{err}")
+            await self._recovery.on_split_error(user_id, messages, err)
             return None
         self.dialogue_theme_by_user[user_id] = splited_texts.current_theme
         theme_num = splited_texts.theme_num

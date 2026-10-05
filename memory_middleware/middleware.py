@@ -38,7 +38,8 @@ from langgraph.types import Command
 from typing_extensions import override
 
 from .config import MemoryConfig, TYPE_SCORE_MAP
-from .formula import importance, maturity, score, time_decay, type_score_summary
+from .formula import (importance, maturity, relevance_scores, score, time_decay,
+                      type_score_union)
 from .models import TimeMemoryFormulaParam
 from .profile import merge_user_profile
 from .prompt import SystemPromptOperation
@@ -64,9 +65,12 @@ DEFAULT_MATH_PROMPT = dedent("""\
     其中：
         S(m) -> 记忆片段得分
         R(m, q) ：语义相关性 -> 决定是否需要
+            R = max(0, (cos(m,q) - 本批候选中位余弦) / (本批最高余弦 - 本批中位余弦))
+            即在**本次候选集合内**做相对刻度归一化：低于中位数的记 0，最高者记 1
         T(m) ：结合艾宾浩斯曲线的参数化时间衰减 -> 决定是否"过期"
         F(m) ：固有重要性 -> 决定是否重要
-        而F(m) 的公式为：clamp(w0 + w1*∑(v_i*I_type(i))+w2*(1-exp(-refresh_count(m)*k)), 0, 1)
+        而F(m) 的公式为：clamp(w0 + w1*u + w2*(1-exp(-refresh_count(m)*k)), 0, 1)
+            其中 u = 1 - Π(1 - v_i)：类型分的**概率并集**（多类型递增、边际递减、有界不饱和）
             refresh_count(m) ：记忆m的刷新次数，初始值为0，每次刷新增加1
             w0, w1, w2：超参数，根据实际情况调整
         α, β, γ, δ ：超参数，根据实际情况调整
@@ -205,6 +209,9 @@ class BalancedMultiDimensionMemory(AgentMiddleware):
         # 调参缓存：(user_id, 主题) → 参数。主题由切分模型产出、只在切片时变，
         # 同一主题下的多次注入不必重复调 LLM（顺带省掉一次结构化调用）
         self._param_cache: dict[tuple[str, str], Any] = dict()
+        # 打分明细（诊断用）：每次注入事件记一条，含调参值与每个候选片段的 R/T/F 及各维加权贡献，
+        # 用来回答"多维评分里到底是哪一维在决定入选"。有界保留，不进任何生产路径。
+        self._scoring_log: list[dict] = []
         self._init_lock = Lock()
 
     # ------------------------------------------------------------------
@@ -478,20 +485,49 @@ class BalancedMultiDimensionMemory(AgentMiddleware):
         delta = params_class.delta
 
         retrieve_fragments = []
-        for document, cosine in all_fragments_by_theme:
+        score_rows = []
+        # 相关度改为候选内相对刻度（中位数锚定，见 formula.relevance_scores 的取舍说明）：
+        # 旧做法 max(0, cos − 0.5) 的绝对值不可跨主题/跨嵌入模型比较，且实测 αR 几乎不区分候选
+        relevances = relevance_scores([c for _, c in all_fragments_by_theme])
+        for (document, cosine), r in zip(all_fragments_by_theme, relevances):
             document_time = document.metadata['time']
             type_list = document.metadata['type']
             strengthen_num = document.metadata['strengthen_num']
-            # cosine 取值范围 [-1, 1]，取 0.5 是因为 cosine 0.5 以上的相关度较高
-            relevance = cosine - 0.5
-            r = relevance if relevance > 0 else 0
             t = time_decay(time.time() - document_time, self.t_t, self.t_c)
-            f = importance(w0, w1, w2, type_score_summary(type_list, TYPE_SCORE_MAP),
+            f = importance(w0, w1, w2, type_score_union(type_list, TYPE_SCORE_MAP),
                            strengthen_num, k=self.config.strengthen_k)
             s_m = score(alpha, r, beta, t, gamma, f, delta)
             retrieve_fragments.append((document, s_m))
+            score_rows.append({
+                'id': (document.metadata or {}).get('id'),
+                'theme': (document.metadata or {}).get('theme', ''),
+                'type': type_list,
+                'strengthen_num': strengthen_num,
+                'age_s': round(time.time() - document_time, 1),
+                'cos': round(cosine, 4),      # 原始余弦：让相关度的标定可事后复算
+                'r': round(r, 4), 't': round(t, 4), 'f': round(f, 4),
+                'alpha_r': round(alpha * r, 4), 'beta_t': round(beta * t, 4),
+                'gamma_f': round(gamma * f, 4), 's': round(s_m, 4),
+            })
         retrieve_fragments.sort(key=lambda x: x[1], reverse=True)
-        return self._select_top_k(retrieve_fragments)
+        picked = self._select_top_k(retrieve_fragments)
+        picked_ids = {(d.metadata or {}).get('id') for d, _ in picked}
+        self._record_scoring(params_class, score_rows, picked_ids)
+        return picked
+
+    def _record_scoring(self, params_class, rows: list, picked_ids: set) -> None:
+        """记一次打分明细（诊断用，有界保留最近 20 次事件）。
+
+        回答"多维评分里哪一维在决定入选"：rows 是本次事件的全部候选及其 R/T/F 与各维加权贡献，
+        picked 标出最终占席的片段（含 always_inject_types 保底与主题名额的干预结果）。
+        """
+        self._scoring_log.append({
+            'params': {k: getattr(params_class, k, None)
+                       for k in ('alpha', 'beta', 'gamma', 'delta', 'w0', 'w1', 'w2')},
+            'candidates': [{**row, 'picked': row['id'] in picked_ids} for row in rows],
+        })
+        if len(self._scoring_log) > 20:
+            self._scoring_log.pop(0)
 
     def _select_top_k(self, scored: list) -> list:
         """注入选片。

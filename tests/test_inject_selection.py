@@ -4,7 +4,11 @@
 动机：细节类信息常集中在少数片段里，而注入只有 top_k 个名额。若同一主题的片段占满名额，
 其它主题（往往载着关键细节）就整块进不了上下文——表现为召回在 4/8 与 8/8 之间跳。
 """
+import asyncio
+
 from langchain_core.documents import Document
+
+from helpers import make_fragment
 
 
 def _doc(text: str, theme: str, score: float):
@@ -57,3 +61,53 @@ class TestSelectTopK:
         scored = [(Document(page_content='闲聊', metadata={'theme': 'A', 'type': ['chat']}), 0.9),
                   (Document(page_content='身份', metadata={'theme': 'C', 'type': ['identity']}), 0.1)]
         assert [d.page_content for d, _ in mw._select_top_k(scored)] == ['身份']
+
+
+class TestScoringLog:
+    """打分明细（诊断）：把"多维评分里哪一维在决定入选"变成可读数据。
+
+    这份日志是对外结论（每次事件的 R/T/F 与各维加权贡献）的唯一数据源，
+    字段名与主项目 `time_memory.py` 保持一致——同一套分析脚本两边通用。
+    """
+
+    def test_records_full_candidate_table(self, build_middleware):
+        mw, vec_store, _ = build_middleware(top_k=2, always_inject_types=())
+        mw.memory_spliter.dialogue_theme_by_user['u1'] = '测试主题'
+
+        async def _add():
+            await vec_store.aadd_documents([
+                make_fragment('u1', 1, '片段一', theme='测试主题', types=['chat'], age=10),
+                make_fragment('u1', 2, '片段二', theme='测试主题', types=['identity'], age=20),
+                make_fragment('u1', 3, '片段三', theme='测试主题', types=['chat'], age=30),
+            ])
+        asyncio.run(_add())
+
+        picked = asyncio.run(mw._extract_fragments_by_time('u1'))
+
+        assert len(mw._scoring_log) == 1, '一次注入事件记一条'
+        ev = mw._scoring_log[0]
+        assert set(ev['params']) == {'alpha', 'beta', 'gamma', 'delta', 'w0', 'w1', 'w2'}
+
+        rows = ev['candidates']
+        assert len(rows) == 3, '不预筛时候选池全部入表'
+        for row in rows:
+            assert {'id', 'theme', 'type', 'strengthen_num', 'age_s',
+                    'r', 't', 'f', 'alpha_r', 'beta_t', 'gamma_f', 's', 'picked'} <= set(row)
+            # 记录值自洽：S = αR + βT + γF + δ（各维贡献是四舍五入后的值，留 0.01 容差）
+            total = row['alpha_r'] + row['beta_t'] + row['gamma_f'] + ev['params']['delta']
+            assert abs(row['s'] - total) < 0.01
+
+        # picked 标记必须与真正返回的选片一致（否则诊断会骗人）
+        marked = {row['id'] for row in rows if row['picked']}
+        assert marked == {(d.metadata or {}).get('id') for d, _ in picked}
+        assert len(marked) == 2
+
+    def test_log_is_bounded(self, build_middleware):
+        """有界保留：长会话下不会无界增长（最多 20 条事件）"""
+        mw, _, _ = build_middleware()
+        assert mw._scoring_log == []
+        for i in range(25):
+            mw._record_scoring(type('P', (), dict(alpha=0.4, beta=0.3, gamma=0.3, delta=0.0,
+                                                  w0=0.1, w1=0.5, w2=0.4))(),
+                               [{'id': i}], set())
+        assert len(mw._scoring_log) == 20
