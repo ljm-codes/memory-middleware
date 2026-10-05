@@ -5,7 +5,7 @@ import time
 
 from langchain_core.messages import HumanMessage
 
-from helpers import make_fragment
+from helpers import DictEmbeddings, SYNONYM_MAP, make_fragment
 from memory_middleware.models import UserProfile
 
 
@@ -86,6 +86,49 @@ class TestIncrementalSummary:
         assert profile['user_name'] == '旧名'   # 新总结未提及 → 保留
         # 列表合并：新值优先，旧值补尾（与上游项目 merge_user_profile 行为一致）
         assert profile['user_hobby'] == ['读书', '游泳']
+
+    def test_semantic_dedup_wired_in_slice(self, build_middleware, runtime):
+        """接线验证：config 注入 embedding 时，增量总结的合并走语义去重（同义约束被刷新）"""
+        mw, vec_store, _ = build_middleware(
+            summary_result=UserProfile(user_name='张三', user_constraints=['忌香菜', '喜欢拍照']),
+            embeddings=DictEmbeddings(SYNONYM_MAP),
+            profile_semantic_min_items=1,
+        )
+        docs = [make_fragment('u1', 1, age=10_000)]
+
+        async def run():
+            # 旧画像已有 '不吃香菜'（与 '忌香菜' 同义）→ 合并后应被新措辞刷新
+            await runtime.store.aput(
+                ('long-term', 'user_profile',), 'u1',
+                {'user_profile': {'user_constraints': ['不吃香菜', '少糖'],
+                                  'last_summarized_id': 0}})
+            await vec_store.aadd_documents(docs)
+            await mw._memory_slice(_mature_messages(), user_id='u1', runtime=runtime)
+            item = await runtime.store.aget(('long-term', 'user_profile',), 'u1')
+            return item.value['user_profile']
+
+        profile = asyncio.run(run())
+        # '不吃香菜' 与 '忌香菜' 同义 → 新措辞刷新；'少糖' 追加在后（新在前旧在后）
+        assert profile['user_constraints'] == ['忌香菜', '喜欢拍照', '少糖']
+
+    def test_semantic_min_items_wired_default(self, build_middleware, runtime):
+        """默认 config（embedding=None）：接线退化为精确去重，同义变体不删"""
+        mw, vec_store, _ = build_middleware(
+            summary_result=UserProfile(user_constraints=['忌香菜', '喜欢拍照']))
+        docs = [make_fragment('u1', 1, age=10_000)]
+
+        async def run():
+            await runtime.store.aput(
+                ('long-term', 'user_profile',), 'u1',
+                {'user_profile': {'user_constraints': ['不吃香菜'],
+                                  'last_summarized_id': 0}})
+            await vec_store.aadd_documents(docs)
+            await mw._memory_slice(_mature_messages(), user_id='u1', runtime=runtime)
+            item = await runtime.store.aget(('long-term', 'user_profile',), 'u1')
+            return item.value['user_profile']
+
+        profile = asyncio.run(run())
+        assert profile['user_constraints'] == ['忌香菜', '喜欢拍照', '不吃香菜']
 
     def test_summary_failure_recovery(self, build_middleware, runtime):
         """总结 LLM 失败：返回 None、走 ErrorRecovery、画像不落库"""

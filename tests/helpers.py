@@ -5,6 +5,47 @@ import time
 from langchain_core.documents import Document
 
 
+class DictEmbeddings:
+    """测试用可控嵌入：文本 → 预置向量；未注册文本返回零向量（与任何向量 cos=0）。
+
+    向量均为单位向量，cosine 值即点积，方便直接断言相似/不相似。
+    """
+
+    def __init__(self, mapping):
+        self.mapping = mapping
+        self.calls = []  # 记录每次 embed_documents 的入参，验证 API 触发次数
+
+    def embed_documents(self, texts):
+        self.calls.append(list(texts))
+        return [self.mapping.get(t, [0.0, 0.0, 0.0, 0.0]) for t in texts]
+
+    def embed_query(self, text):
+        return self.mapping.get(text, [0.0, 0.0, 0.0, 0.0])
+
+
+class ExplodingEmbeddings:
+    """一旦被调用就抛错：用于验证小列表场景下嵌入 API 不应被触发"""
+
+    def embed_documents(self, texts):
+        raise AssertionError("不应调用嵌入 API")
+
+    def embed_query(self, text):
+        raise AssertionError("不应调用嵌入 API")
+
+
+# 单位向量：同义对 cos≥0.98，无关对 cos=0，临界对 cos=0.8（< 0.85 阈值）
+SYNONYM_MAP = {
+    '不吃香菜': [1.0, 0.0, 0.0, 0.0],
+    '忌香菜': [0.99, 0.141, 0.0, 0.0],
+    '不要香菜': [0.98, 0.199, 0.0, 0.0],
+    '少糖': [0.0, 1.0, 0.0, 0.0],
+    '不要太甜': [0.1, 0.995, 0.0, 0.0],
+    '喜欢拍照': [0.0, 0.0, 1.0, 0.0],
+    '周末爬山': [0.0, 0.0, 0.0, 1.0],
+    '少放盐': [0.8, 0.6, 0.0, 0.0],  # 与"不吃香菜" cos=0.8，低于阈值
+}
+
+
 class _FakeLLM:
     """基类：记录调用，返回固定结果；可配置抛出异常"""
 
