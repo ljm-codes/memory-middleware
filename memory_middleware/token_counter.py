@@ -1,6 +1,6 @@
 """token 估算：可注入的 TokenCounter。
 
-上游项目（fireflymall-ai-customer-service，https://github.com/fufuxiaokeai/fireflymall-ai-customer-service）
+上游项目（fireflymall-ai-customer-service，https://github.com/lijia-ming/fireflymall-ai-customer-service）
 用 tiktoken/transformers 精确计数；独立版默认使用"字数/3.3"启发式估算，
 测试与轻量场景足够，精确计数请注入自定义实现。
 """

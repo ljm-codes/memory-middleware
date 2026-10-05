@@ -1,6 +1,6 @@
 """衡忆多维认知架构（BalancedMultiDimensionMemory）：LangGraph AgentMiddleware。
 
-上游项目：https://github.com/fufuxiaokeai/fireflymall-ai-customer-service
+上游项目：https://github.com/lijia-ming/fireflymall-ai-customer-service
 
 三层记忆：
     1. 工作记忆（短期）：带时间戳的 messages 列表
@@ -45,7 +45,7 @@ from .prompt import SystemPromptOperation
 from .rag import FragmentsMemoryRAG
 from .spliter import MemoryFragmentsAiSpliter
 from .storage.kv import KVStore, MemoryKVStore
-from .storage.vectors import HashEmbeddings, SQLiteVecStore
+from .storage.vectors import FragmentIdSource, HashEmbeddings, SQLiteVecStore
 from .token_counter import TokenCounter, default_token_counter
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,8 @@ _METERAGE_MAP = {
     'M': 10 ** 6,
     'B': 10 ** 9,
 }
+
+_PARAM_CACHE_MAX = 256   # 调参缓存条数上限（FIFO 淘汰）
 
 DEFAULT_MATH_PROMPT = dedent("""\
     你现在是一个专业的数学专家，你需要通过当前聊天主题来调整对于公式的参数。
@@ -179,8 +181,6 @@ class BalancedMultiDimensionMemory(AgentMiddleware):
         def _model_factory():
             return init_chat_model(self.config.model_name, **self.config.model_kwargs)
 
-        self.memory_spliter = spliter or MemoryFragmentsAiSpliter(
-            kv_store=self._kv_store, recovery=self._recovery, model_factory=_model_factory)
         if rag is None:
             embeddings = self.config.embeddings or HashEmbeddings()
             vec_store = SQLiteVecStore(
@@ -189,11 +189,22 @@ class BalancedMultiDimensionMemory(AgentMiddleware):
                 vector_store=vec_store, recovery=self._recovery, model_factory=_model_factory)
         self.memory_fragments_rag = rag
 
+        self.memory_spliter = spliter or MemoryFragmentsAiSpliter(
+            kv_store=self._kv_store, recovery=self._recovery, model_factory=_model_factory)
+        # 片段 id 撞库兜底：注入式 spliter（bench / tests / examples 都走这条）也自动接上持久高水位来源
+        if self.memory_spliter.id_source is None:
+            vec_store = getattr(rag, 'vector_store', None)
+            if isinstance(vec_store, FragmentIdSource):
+                self.memory_spliter.id_source = vec_store
+
         self._summary_llm = summary_llm
         # 按 user 隔离的提示词操作实例，避免多用户并发时互相覆盖 memory_fragments
         self._prompt_operations: dict[str, SystemPromptOperation] = dict()
         self._lock: dict[str, Lock] = dict()
         self._user_retrieve_state: dict[str, bool] = dict()
+        # 调参缓存：(user_id, 主题) → 参数。主题由切分模型产出、只在切片时变，
+        # 同一主题下的多次注入不必重复调 LLM（顺带省掉一次结构化调用）
+        self._param_cache: dict[tuple[str, str], Any] = dict()
         self._init_lock = Lock()
 
     # ------------------------------------------------------------------
@@ -245,11 +256,17 @@ class BalancedMultiDimensionMemory(AgentMiddleware):
 
             current_tokens = self._calculate_current_token(messages, user_id)
 
-            # text 必须传完整消息列表（消息偏移游标在 spliter 内部管理，见 atext_to_document 说明）
-            if memory_fragments := await self.memory_spliter.atext_to_document(text=state['messages'], user=user_id):
-                await self.memory_fragments_rag.add(memory_fragments)
-
             if self._is_primary_triggered(current_tokens, len(messages)):
+                # 事件 = 窗口达到预算。awrap_model_call 会把上下文截断到最近一条人类消息，
+                # 因此固化必须与事件同刻发生，否则这段内容既不在上下文、也不在暂存库。
+                # 切分不再是独立动作：一次事件 = 切分 + 调参 +（片段成熟时）归纳。
+                # text 必须传完整消息列表（消息偏移游标在 spliter 内部管理，见 atext_to_document 说明）
+                if memory_fragments := await self.memory_spliter.atext_to_document(text=state['messages'], user=user_id):
+                    try:
+                        await self.memory_fragments_rag.add(memory_fragments)
+                    except Exception as e:
+                        # 落库失败不该掀掉整轮对话：游标已推进，本批片段弃掉（留 id 空洞但不会重复）
+                        logger.error(f"记忆片段落库失败，跳过本批: {e}")
                 self._user_retrieve_state[user_id] = True
                 return None
 
@@ -419,7 +436,14 @@ class BalancedMultiDimensionMemory(AgentMiddleware):
                 self.m_t, self.m_c, self.long_term_value,
                 user_id=user_id, last_summary_id=last_summary_id):
             profile_json, new_cursor = profile
-            merged = merge_user_profile(existing_profile, profile_json)
+            # 列表字段语义去重（注入真实 embedding 才启用；None 时退化为精确去重，不调 API）
+            merged = merge_user_profile(
+                existing_profile, profile_json,
+                embedding=self.config.embeddings,
+                similarity_threshold=self.config.profile_dedup_threshold,
+                semantic_min_items=self.config.profile_semantic_min_items,
+                max_items=self.config.profile_list_max,
+            )
             merged['last_summarized_id'] = new_cursor
             await self._summary_to_long_term(merged, user_id, runtime)
         logger.info(f"记忆切片概率：{m}")
@@ -435,11 +459,16 @@ class BalancedMultiDimensionMemory(AgentMiddleware):
         if not all_fragments_by_theme:
             # 库里还没有该用户的片段时，跳过 LLM 调参调用，避免每轮白烧一次模型
             return None
-        param_result = await self._summary_llm.ainvoke([
-            SystemMessage(content=self.math_agent_prompt),
-            HumanMessage(content=f"当前用户{user_id}的对话主题：{current_theme_by_user}"),
-        ])
-        params_class = param_result
+        cache_key = (user_id, current_theme_by_user)
+        params_class = self._param_cache.get(cache_key)
+        if params_class is None:
+            params_class = await self._summary_llm.ainvoke([
+                SystemMessage(content=self.math_agent_prompt),
+                HumanMessage(content=f"当前用户{user_id}的对话主题：{current_theme_by_user}"),
+            ])
+            if len(self._param_cache) >= _PARAM_CACHE_MAX:
+                self._param_cache.pop(next(iter(self._param_cache)))  # FIFO 淘汰，防无界增长
+            self._param_cache[cache_key] = params_class
         w0 = params_class.w0
         w1 = params_class.w1
         w2 = params_class.w2
@@ -462,4 +491,39 @@ class BalancedMultiDimensionMemory(AgentMiddleware):
             s_m = score(alpha, r, beta, t, gamma, f, delta)
             retrieve_fragments.append((document, s_m))
         retrieve_fragments.sort(key=lambda x: x[1], reverse=True)
-        return retrieve_fragments[: self.config.top_k]
+        return self._select_top_k(retrieve_fragments)
+
+    def _select_top_k(self, scored: list) -> list:
+        """注入选片。
+
+        - `always_inject_types`：这些类型的片段优先占席（保底），组内仍按 S(m) 降序。
+          动机：检索预筛按主题语义取候选，主题一偏，其它主题的 identity/preference 片段会整块落选
+          ——而它们正是 TYPE_SCORE_MAP 里价值最高的类型。
+        - `top_k_max_per_theme`：单主题名额上限（防同主题占满），名额没填满时放开补齐。
+        """
+        limit = self.config.top_k
+        priority = set(self.config.always_inject_types or ())
+        if priority:
+            def _is_priority(doc):
+                return bool(priority & set((doc.metadata or {}).get('type') or []))
+            scored = sorted(scored, key=lambda x: (not _is_priority(x[0]), -x[1]))
+        cap = self.config.top_k_max_per_theme
+        if not cap:
+            return scored[:limit]
+        picked, per_theme = [], {}
+        for doc, s_m in scored:
+            theme = (doc.metadata or {}).get('theme', '')
+            if per_theme.get(theme, 0) >= cap:
+                continue
+            picked.append((doc, s_m))
+            per_theme[theme] = per_theme.get(theme, 0) + 1
+            if len(picked) >= limit:
+                return picked
+        if len(picked) < limit:   # 单主题占比过高 → 放开上限补齐
+            chosen = {id(d) for d, _ in picked}
+            for doc, s_m in scored:
+                if len(picked) >= limit:
+                    break
+                if id(doc) not in chosen:
+                    picked.append((doc, s_m))
+        return picked

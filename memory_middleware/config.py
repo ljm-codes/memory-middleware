@@ -1,5 +1,5 @@
 """配置：构造器注入式（上游项目 fireflymall-ai-customer-service，
-https://github.com/fufuxiaokeai/fireflymall-ai-customer-service —— 通过 load_config.config
+https://github.com/lijia-ming/fireflymall-ai-customer-service —— 通过 load_config.config
 全局读取，独立版改为显式配置）。
 
 示例：
@@ -75,9 +75,23 @@ class MemoryConfig:
     embeddings: Optional[Any] = None           # langchain Embeddings；None 时用内置 HashEmbeddings（离线）
 
     # ---- 检索 ----
-    retrieve_k: int = 6        # 检索候选数
-    top_k: int = 3             # 注入 top-N
+    # 候选池大小。None = 不限（该用户的全部片段都参与打分）——推荐值：
+    # 预筛按"与当前主题的语义相似度"取候选，而它无从判断片段内容的价值；细节往往扎堆在
+    # 少数片段里，主题一偏就把它们整块挡在门外（实测：召回在 3/8~8/8 之间跳）。
+    # 放开预筛几乎零成本：sqlite-vec 本就是全表算距离再取前 k，而打分是本地算术。
+    retrieve_k: Optional[int] = None
+    top_k: int = 4             # 注入 top-N（实测 3→4 可把细节召回的样本间波动收成零方差）
+    top_k_max_per_theme: Optional[int] = None  # 注入集合里单主题上限（None=不限；防同主题占满名额）
+    # 保底类型：这些类型的片段优先占席（与 TYPE_SCORE_MAP 的最高两档 0.95/0.80 一致）。
+    # 动机：检索预筛按主题语义取候选，主题一偏，identity/preference 片段会整块落选——
+    # 而它们正是公式自己声明的最重要记忆。
+    always_inject_types: tuple = ('identity', 'preference')
     strengthen_k: float = 0.5  # F(m) 中巩固次数的衰减系数
+
+    # ---- 画像列表字段去重（膨胀控制：同义变体如"不吃香菜"/"忌香菜"累积膨胀） ----
+    profile_dedup_threshold: float = 0.85   # 语义去重余弦阈值（真实嵌入同义约束 0.85+，宁漏不去）
+    profile_semantic_min_items: int = 5     # 精确去重后达到此条数才调嵌入 API（小列表零成本）
+    profile_list_max: Optional[int] = 10    # 列表字段上限，超出保留新值截断（None 不限制）
 
     # ---- 提示词 ----
     initial_prompt: str = ''   # 主系统提示词（上游项目从 agent.main_agent 导入，这里注入）

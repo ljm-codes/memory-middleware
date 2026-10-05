@@ -1,7 +1,7 @@
 """片段切分（MemoryFragmentsAiSpliter）：把工作记忆中的消息按主题切成暂存库片段。
 
 与上游项目 fireflymall-ai-customer-service
-（https://github.com/fufuxiaokeai/fireflymall-ai-customer-service）
+（https://github.com/lijia-ming/fireflymall-ai-customer-service）
 memory_rag.py 的 MemoryFragmentsAiSpliter 一致，差异：
 Redis 游标 → KVStore 注入；RabbitMQ 保底 → ErrorRecovery 注入。
 """
@@ -17,6 +17,7 @@ from langchain_core.runnables.retry import ExponentialJitterParams
 from .models import MemoryFragments, MemoryFragmentsMetadata, SummaryMemoryAi
 from .recovery import ErrorRecovery, NullRecovery
 from .storage.kv import KVStore, MemoryKVStore
+from .storage.vectors import FragmentIdSource
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,12 @@ DEFAULT_SPLIT_PROMPT = """\
         - fact: 包含客观事实、技术细节
         - episode: 描述某个经历或任务过程
         - chat: 一般性闲聊，长期价值低
+    - 类型判定只看内容本身，不看语气：用户陈述的个人信息 / 偏好 / 约束（姓名、职业、生日、机型、
+      订单号、卡尾号、作息、饮食、住址等）一律标 identity / preference / fact，
+      绝不能因为夹在闲聊里就标成 chat —— chat 只用于确实没有信息量的寒暄。
     - 片段范围：必须按照主题划分区域，且不允许跨主题。
-      scope 的 start-end 为左闭右开区间（如 0-50 表示索引 0~49 的消息），不允许出现 0-0 / 1-1 等 start=end 的情况，因为他们相减为0，
-      若要表达一个消息，必须使用 0-1 或 1-2 等范围，同样也要符合左闭右开的基本规则
+      用 start_idx 与 end_idx 两个整数表示，区间为左闭右开 [start_idx, end_idx)，即覆盖索引 start_idx ~ end_idx-1 的消息；
+      如 start_idx=0、end_idx=50 表示索引 0~49 的消息；要表达单条消息，用 start_idx=0、end_idx=1
     - 每次输出要保证 主题总数 与 记忆片段配置列表 的长度一致。
     - 一个消息会对应相对应的类型并且包含消息的索引号（从0开始），
       若消息过长，将会截取字符，一般发生在tool类型的消息中，
@@ -59,6 +63,7 @@ class MemoryFragmentsAiSpliter:
             model_name: str = 'deepseek-v4-flash',
             model_kwargs: Optional[dict] = None,
             model_factory: Optional[Callable[[], Any]] = None,
+            id_source: Optional[FragmentIdSource] = None,
     ):
         # 注入的模型需支持结构化输出（ainvoke 返回 SummaryMemoryAi）；None 时按工厂惰性创建
         self.split_llm = split_llm
@@ -68,6 +73,10 @@ class MemoryFragmentsAiSpliter:
         self._model_name = model_name
         self._model_kwargs = model_kwargs or {}
         self._model_factory = model_factory
+        # 片段 id / 消息偏移的持久化高水位来源（KV 计数器丢失后的兜底；不注入则行为与原来一致）
+        self.id_source = id_source
+        self._id_reconciled: set[str] = set()      # 本进程已向持久层校正过基数的用户
+        self._id_high_water: dict[str, int] = dict()  # 进程内高水位：KV 中途被清也不复用 id
         # 每个用户当前对话主题（切分模型产出，检索调参用）
         self.dialogue_theme_by_user: dict[str, str] = dict()
 
@@ -108,7 +117,7 @@ class MemoryFragmentsAiSpliter:
         content_text = []
         for i, message in enumerate(messages):
             # content_text 必须与 messages 一一对应：空 content 的消息也要占位，
-            # 否则索引错位会导致 LLM 返回的 scope 切错内容
+            # 否则索引错位会导致 LLM 返回的 start_idx/end_idx 切错内容
             if isinstance(message, AIMessage):
                 role = 'ai'
                 content = message.content
@@ -159,8 +168,14 @@ class MemoryFragmentsAiSpliter:
         - memory_msg_offset:{user}：已切分的消息数（切分窗口偏移，每成功切片推进到 len(text)）
         text 必须传"完整消息列表"（从会话开头），偏移由消息游标控制，保证全局单调。
         """
-        fragment_base = int(await self._kv_store.aget(f"memory_fragments:{user}") or '0')
-        msg_offset = int(await self._kv_store.aget(f"memory_msg_offset:{user}") or '0')
+        fragment_base = await self.fragment_id_base(user)
+        raw_offset = await self._kv_store.aget(f"memory_msg_offset:{user}")
+        msg_offset = int(raw_offset or '0')
+        if raw_offset is None:
+            # KV 丢了：从片段元数据的持久高水位恢复切分进度，避免同一会话被从 0 重切出重复片段
+            probed = await self._probed_ids(user)
+            if probed is not None:
+                msg_offset = max(msg_offset, probed[1])
         # 新会话检测：消息列表比游标短 → 游标属于上一个会话的消息流，重置为 0。
         # （偏移语义是"本消息流已切分的消息数"；同一会话内 state['messages'] 只增不减）
         if len(text or []) < msg_offset:
@@ -169,8 +184,13 @@ class MemoryFragmentsAiSpliter:
             memory_fragments = await self.asplit_text(text, user, msg_offset)
         if not memory_fragments:
             return None
+        # 原子预留：先把 KV 计数器抬到持久高水位（KV 丢失或落后时），再一次性 INCRBY 拿 n 个 id。
+        # 多进程下每个进程各自可能做一次校正，但 INCRBY 保证各进程拿到的 id 段互不重叠。
+        if fragment_base > int(await self._kv_store.aget(f"memory_fragments:{user}") or '0'):
+            await self._kv_store.aset(f"memory_fragments:{user}", str(fragment_base))
+        last_id = await self._kv_store.aincr(f"memory_fragments:{user}", len(memory_fragments))
         documents = []
-        fragment_id = fragment_base
+        fragment_id = last_id - len(memory_fragments)
         for fragment in memory_fragments:
             fragment_id += 1
             metadata = fragment.config.model_dump()
@@ -184,16 +204,47 @@ class MemoryFragmentsAiSpliter:
                 metadata=metadata,
             )
             documents.append(document)
-        await self._kv_store.aset(f"memory_fragments:{user}", str(fragment_id))
+        if documents:
+            # 最后一片记下"切到哪了"：KV 丢失后据此恢复消息偏移（旧数据无此键 → 取 0，行为不变）
+            documents[-1].metadata['msg_end'] = len(text or [])
+        # 计数器已由 aincr 原子写回（值 = last_id），这里只更新进程内高水位
+        self._id_high_water[user] = last_id
         # 消息偏移 = 完整消息列表长度（切分失败时不推进，下轮重试）
         await self._kv_store.aset(f"memory_msg_offset:{user}", str(len(text or [])))
         return documents
+
+    async def _probed_ids(self, user: str) -> Optional[tuple]:
+        """向持久化来源探一次 (最大片段 id, 最大已切分消息数)；未注入来源或查询失败返回 None"""
+        if self.id_source is None:
+            return None
+        try:
+            return self.id_source.max_fragment_ids(user)
+        except Exception as e:
+            logger.warning(f"片段高水位兜底查询失败，沿用 KV 计数器: {e}")
+            return None
+
+    async def fragment_id_base(self, user: str) -> int:
+        """片段 id 基数：KV 快路径 + 持久高水位兜底，只抬高不回退。
+
+        触发兜底查询的条件（其余情况零额外查询）：
+        - KV 键缺失或为 0（计数器丢失的失败信号）
+        - 本进程尚未校正过该用户（覆盖"KV 存在但落后"，如 Redis 恢复了旧快照）
+        """
+        raw = await self._kv_store.aget(f"memory_fragments:{user}")
+        base = int(raw or '0')
+        if raw is None or base == 0 or user not in self._id_reconciled:
+            probed = await self._probed_ids(user)
+            if probed is not None:
+                base = max(base, probed[0])
+                self._id_reconciled.add(user)
+        return max(base, self._id_high_water.get(user, 0))
 
     @staticmethod
     def split_text(theme_num, conf, text: list[str], messages: list[BaseMessage]) -> List[MemoryFragments]:
         """把切分模型的输出（主题数+配置列表）翻译为记忆片段。
 
-        防御性处理：theme_num 与 conf 长度不一致时截断；scope 越界/非法时跳过该片段。
+        防御性处理：theme_num 与 conf 长度不一致时截断；与消息条数相关的越界跳过该片段
+        （负索引与零宽/反向区间已由 SummaryMemoryFragmentsConfig 的模型校验兜底）。
         """
         if theme_num <= 0:
             logger.warning(f"长主题数量必须大于0，当前主题数量为{theme_num}")
@@ -204,18 +255,13 @@ class MemoryFragmentsAiSpliter:
         memory_fragments = []
         valid_count = min(theme_num, len(conf))
         for i in range(valid_count):
-            try:
-                start, end = conf[i].scope.split('-')
-                start = int(start)
-                end = int(end)
-            except (ValueError, AttributeError):
-                logger.warning(f"第 {i} 个片段 scope 解析失败: {conf[i].scope!r}，跳过该片段")
-                continue
-            # 防御 LLM 越界：scope 为左闭右开区间，end 最多取到消息末尾
-            start = max(start, 0)
-            end = min(end, len(messages))
-            if start >= end:
-                logger.warning(f"第 {i} 个片段范围无效: {conf[i].scope!r}，跳过该片段")
+            # 负索引、零宽/反向区间已在 SummaryMemoryFragmentsConfig 的模型校验里兜底，
+            # 这里只处理与消息条数相关的越界
+            start = conf[i].start_idx
+            end = min(conf[i].end_idx, len(messages))
+            if start >= len(messages) or start >= end:
+                logger.warning(f"第 {i} 个片段范围无效: [{start}, {end})，"
+                               f"消息数 {len(messages)}，跳过该片段")
                 continue
 
             content = "\n".join(text[start:end])

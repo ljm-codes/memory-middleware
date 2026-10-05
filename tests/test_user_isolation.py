@@ -74,8 +74,8 @@ class TestProfileIsolation:
 
 class TestConcurrentUsers:
     def test_concurrent_abefore_model_no_cross_talk(self, build_middleware, runtime, runtime_u2, kv_store):
-        """两个用户并发触发切片：各自游标互不干扰"""
-        mw, vec_store, _ = build_middleware()
+        """两个用户并发触发切片：各自游标互不干扰（切分随主触发事件发生，故给一个会触发的预算）"""
+        mw, vec_store, _ = build_middleware(pattern='messages', trigger_threshold=1)
         now = time.time()
         msgs_u1 = [HumanMessage('u1 的消息', additional_kwargs={'time': now - 2000})]
         msgs_u2 = [HumanMessage('u2 的消息', additional_kwargs={'time': now - 2000})]

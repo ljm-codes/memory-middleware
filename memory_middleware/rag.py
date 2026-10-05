@@ -1,7 +1,7 @@
 """暂存库检索与增量画像总结（FragmentsMemoryRAG）。
 
 与上游项目 fireflymall-ai-customer-service
-（https://github.com/fufuxiaokeai/fireflymall-ai-customer-service）
+（https://github.com/lijia-ming/fireflymall-ai-customer-service）
 memory_rag.py 的 FragmentsMemoryRAG 一致，差异：
 向量库 → VectorStore 注入；RabbitMQ 保底 → ErrorRecovery 注入；
 模型名参数 → 构造时注入的 model_factory。
@@ -86,10 +86,13 @@ class FragmentsMemoryRAG:
     async def query_context_distance(
             self,
             query: str,
-            k: int = 5,
+            k: Optional[int] = None,
             user_id: Optional[str] = None,
     ) -> List[Tuple[Document, float]]:
-        """检索与 query 最相似的记忆片段，按 user_id 过滤，避免跨用户泄露"""
+        """检索与 query 最相似的记忆片段，按 user_id 过滤，避免跨用户泄露。
+
+        k=None 表示不预筛（该用户全部片段都作为候选）——推荐做法，理由见 MemoryConfig.retrieve_k。
+        """
         doc_scores = await self.vector_store.asimilarity_search_with_score(
             query=query, k=k, filter={'user_id': user_id})
         if not doc_scores:

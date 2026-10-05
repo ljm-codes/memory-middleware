@@ -1,7 +1,7 @@
 """向量暂存库：sqlite-vec 本地实现 + 确定性离线嵌入。
 
 - CustomizeSQLiteVec：从上游项目 fireflymall-ai-customer-service
-  （https://github.com/fufuxiaokeai/fireflymall-ai-customer-service）
+  （https://github.com/lijia-ming/fireflymall-ai-customer-service）
   Tools/middleware/memory/customize_sqlite_vec.py 提炼（仅替换了日志为标准库，其余逻辑一致）
 - HashEmbeddings：确定性哈希嵌入（离线可用，语义质量低，生产请换真实嵌入）
 - SQLiteVecStore：中间件使用的窄接口（增/删/检索 + 归纳游标查询）
@@ -15,7 +15,7 @@ import sqlite3
 import struct
 import uuid
 import warnings
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Protocol, Tuple, runtime_checkable
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -288,6 +288,14 @@ class HashEmbeddings(Embeddings):
         return self._embed_text(text)
 
 
+@runtime_checkable
+class FragmentIdSource(Protocol):
+    """片段 id / 消息偏移的持久化高水位来源（KV 计数器丢失后自愈用）"""
+
+    def max_fragment_ids(self, user_id: str) -> Tuple[int, int]:
+        """返回 (最大片段 id, 最大已切分消息数)；无数据时 (0, 0)"""
+
+
 class SQLiteVecStore:
     """中间件使用的向量库窄接口：sqlite-vec 本地实现（文件/内存库均可）。
 
@@ -317,9 +325,13 @@ class SQLiteVecStore:
             await self._vec.aadd_documents(documents)
 
     async def asimilarity_search_with_score(
-            self, query: str, k: int = 5, filter: Optional[dict] = None
+            self, query: str, k: Optional[int] = None, filter: Optional[dict] = None
     ) -> List[Tuple[Document, float]]:
         async with self._lock:
+            if k is None:
+                # 不限候选 = 返回该用户全部片段。sqlite-vec 本就是全表算距离再取前 k，
+                # 差别只是返回多少行，向量计算成本不变。
+                k = 4096
             return await self._vec.asimilarity_search_with_score(query=query, k=k, filter=filter)
 
     async def adelete(self, ids: List[str]) -> None:
@@ -340,6 +352,25 @@ class SQLiteVecStore:
         rows = cursor.fetchall()
         cursor.close()
         return [(r['text'], json.loads(r['metadata']) or {}, r['fid']) for r in rows]
+
+    def max_fragment_ids(self, user_id: str) -> Tuple[int, int]:
+        """该用户片段的高水位：(最大片段 id, 最大已切分消息数)。
+
+        片段 id 计数器活在 KV 里、片段本体在这里；KV 一丢（进程重启 / Redis 无持久化 /
+        换库重跑）计数器就从 1 重算并撞 UNIQUE 约束，故用库里的持久高水位兜底。
+        msg_end 由写入端打在每次切分的最后一片 metadata 上；旧数据没这个键 → 取 0，
+        行为与兜底前一致，无需迁移。
+        """
+        cursor = self._con.cursor()
+        cursor.execute(
+            f"select max(cast(json_extract(metadata, '$.id') as integer)) as max_fid, "
+            f"max(cast(json_extract(metadata, '$.msg_end') as integer)) as max_offset "
+            f"from {self._table} where json_extract(metadata, '$.user_id') = ?",
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        return (int(row['max_fid'] or 0), int(row['max_offset'] or 0))
 
     def close(self) -> None:
         try:

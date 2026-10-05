@@ -1,6 +1,6 @@
 """失败保底机制抽象：切分/总结 LLM 失败时的恢复钩子。
 
-上游项目（fireflymall-ai-customer-service，https://github.com/fufuxiaokeai/fireflymall-ai-customer-service）
+上游项目（fireflymall-ai-customer-service，https://github.com/lijia-ming/fireflymall-ai-customer-service）
 原机制依赖 RabbitMQ（持久队列重试 + 邮件告警）；独立版拆为可插拔协议：
 - NullRecovery（默认）：失败记日志、返回 None（上层跳过该轮），离线可用
 - RabbitMQRecovery（可选）：与项目版一致——失败时把原始数据投递到持久队列，

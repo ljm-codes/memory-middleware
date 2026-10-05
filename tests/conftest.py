@@ -127,7 +127,8 @@ def build_middleware(tmp_path, kv_store, embeddings):
                 split_llm=FakeSplitLLM(
                     split_result or SummaryMemoryAi(
                         theme_num=1,
-                        config=[SummaryMemoryFragmentsConfig(theme='测试主题', type=['chat'], scope='0-1')],
+                        config=[SummaryMemoryFragmentsConfig(theme='测试主题', type=['chat'],
+                                                             start_idx=0, end_idx=1)],
                         current_theme='测试主题',
                     )),
                 kv_store=kv_store,

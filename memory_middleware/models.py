@@ -8,7 +8,7 @@
 from datetime import datetime
 from typing import Literal, Optional, List, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # identity: 包含用户身份信息（姓名、职业等）
 # preference: 包含用户偏好、习惯
@@ -71,9 +71,17 @@ class MemoryFragments(BaseModel):
 class SummaryMemoryFragmentsConfig(BaseModel):
     theme: str = Field(default='', description="记忆主题")
     type: List[fragments_type] = Field(default=[], description="在同一主题下可能存在的类型")
-    scope: str = Field(
-        default='',
-        description="记忆范围（从0开始计数）要严格按照格式输入。格式：start-end，如：0-50；51-100")
+    start_idx: int = Field(default=0, description="片段起始消息索引（从0开始计数，左闭）")
+    end_idx: int = Field(default=1, description="片段结束消息索引（左开：实际覆盖到 end_idx-1 那条消息）")
+
+    @model_validator(mode='after')
+    def _normalize_message_range(self):
+        """结构化输出注入后即兜底：负索引归零；零宽/反向区间退化为只取 start_idx 那一条。"""
+        if self.start_idx < 0:
+            self.start_idx = 0
+        if self.end_idx <= self.start_idx:
+            self.end_idx = self.start_idx + 1
+        return self
 
 
 class SummaryMemoryAi(BaseModel):

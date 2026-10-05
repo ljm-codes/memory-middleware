@@ -22,8 +22,12 @@ def _mature_messages(n=4, age=2000):
 
 class TestSliceTrigger:
     def test_abefore_model_slices_and_stores(self, build_middleware, kv_store, runtime):
-        """成熟度触发后：切分模型被调用、片段落库、游标推进"""
-        mw, vec_store, _ = build_middleware()
+        """事件触发（窗口达预算 + 记忆成熟）后：切分模型被调用、片段落库、游标推进
+
+        切分已并入主触发事件（见 middleware.abefore_model），只满足成熟度不放行切分，
+        因此这里显式给一个会触发的窗口预算。
+        """
+        mw, vec_store, _ = build_middleware(pattern='messages', trigger_threshold=4)
         msgs = _mature_messages()
 
         async def run():
@@ -43,7 +47,7 @@ class TestSliceTrigger:
         assert meta['id'] == 1
         assert meta['theme'] == '测试主题'
         assert meta['strengthen_num'] == 0
-        assert '消息0' in text  # scope 0-1 → 左闭右开取第一条
+        assert '消息0' in text  # [0, 1) → 左闭右开取第一条
         # KV 游标推进
         assert asyncio.run(kv_store.aget('memory_fragments:u1')) == '1'
 
@@ -81,6 +85,55 @@ class TestCursorContinuation:
         assert docs2[0].metadata['id'] == 2
         assert asyncio.run(kv_store.aget('memory_fragments:u1')) == '2'
 
+    def test_fresh_kv_continues_ids_from_store(self, build_middleware):
+        """KV 计数器丢失（进程重启 / Redis 无持久化）后：从向量库持久高水位接着编，不撞 UNIQUE 约束"""
+        from memory_middleware.storage.kv import MemoryKVStore
+
+        mw, vec_store, _ = build_middleware()
+        msgs1 = _mature_messages(4)
+        msgs2 = _mature_messages(6)
+
+        async def run():
+            docs1 = await mw.memory_spliter.atext_to_document(text=msgs1, user='u1')
+            await mw.memory_fragments_rag.add(docs1)
+            # 模拟进程重启：KV 换新、进程内状态清空，只剩向量库里的持久高水位
+            mw.memory_spliter._kv_store = MemoryKVStore()
+            mw.memory_spliter._id_reconciled.clear()
+            mw.memory_spliter._id_high_water.clear()
+            docs2 = await mw.memory_spliter.atext_to_document(text=msgs2, user='u1')
+            await mw.memory_fragments_rag.add(docs2)   # 修复前这里抛 UNIQUE constraint failed
+            return docs1, docs2
+
+        docs1, docs2 = asyncio.run(run())
+        assert [d.id for d in docs1] == ['u1-1']
+        assert docs2 is not None and [d.id for d in docs2] == ['u1-2']
+        # 消息偏移也从持久高水位自愈：第二次只切游标之后的 2 条新消息
+        assert asyncio.run(mw.memory_spliter._kv_store.aget('memory_msg_offset:u1')) == '6'
+
+    def test_concurrent_slices_get_disjoint_ids(self, build_middleware):
+        """并发切片：INCRBY 原子预留保证两批片段拿到的 id 段不重叠（多进程下同理）"""
+        from memory_middleware.models import SummaryMemoryAi, SummaryMemoryFragmentsConfig
+
+        split_result = SummaryMemoryAi(
+            theme_num=2,
+            config=[SummaryMemoryFragmentsConfig(theme='主题A', type=['chat'], start_idx=0, end_idx=2),
+                    SummaryMemoryFragmentsConfig(theme='主题B', type=['chat'], start_idx=2, end_idx=4)],
+            current_theme='主题A')
+        mw, vec_store, _ = build_middleware(split_result=split_result)
+        msgs = _mature_messages(4)
+
+        async def run():
+            return await asyncio.gather(
+                mw.memory_spliter.atext_to_document(text=msgs, user='u1'),
+                mw.memory_spliter.atext_to_document(text=msgs, user='u1'),
+            )
+
+        a, b = asyncio.run(run())
+        ids = [d.metadata['id'] for d in (a or [])] + [d.metadata['id'] for d in (b or [])]
+        assert ids, "至少一批应产出片段"
+        assert len(ids) == len(set(ids)), f"id 段重叠: {ids}"   # 修复目标：不重叠
+        assert min(ids) >= 1
+
     def test_multi_fragment_slice_message_offset(self, build_middleware, kv_store):
         """双游标回归：一次切片产出多片段时，消息偏移必须独立于片段数推进。
 
@@ -90,8 +143,8 @@ class TestCursorContinuation:
 
         split_result = SummaryMemoryAi(
             theme_num=2,
-            config=[SummaryMemoryFragmentsConfig(theme='主题A', type=['chat'], scope='0-2'),
-                    SummaryMemoryFragmentsConfig(theme='主题B', type=['chat'], scope='2-4')],
+            config=[SummaryMemoryFragmentsConfig(theme='主题A', type=['chat'], start_idx=0, end_idx=2),
+                    SummaryMemoryFragmentsConfig(theme='主题B', type=['chat'], start_idx=2, end_idx=4)],
             current_theme='主题A')
         mw, vec_store, _ = build_middleware(split_result=split_result)
         msgs1 = _mature_messages(4)

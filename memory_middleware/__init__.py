@@ -20,7 +20,7 @@ from .models import (
 from .spliter import MemoryFragmentsAiSpliter
 from .rag import FragmentsMemoryRAG
 from .storage.kv import KVStore, MemoryKVStore, RedisKVStore
-from .storage.vectors import HashEmbeddings, SQLiteVecStore
+from .storage.vectors import FragmentIdSource, HashEmbeddings, SQLiteVecStore
 from .recovery import ErrorRecovery, NullRecovery, RabbitMQRecovery
 
 __all__ = [
@@ -41,6 +41,7 @@ __all__ = [
     "RedisKVStore",
     "HashEmbeddings",
     "SQLiteVecStore",
+    "FragmentIdSource",
     "ErrorRecovery",
     "NullRecovery",
     "RabbitMQRecovery",
