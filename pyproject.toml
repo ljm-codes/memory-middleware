@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "memory-middleware"
-version = "0.1.0"
+version = "0.2.0"
 description = "BalancedMultiDimensionMemory — a LangGraph AgentMiddleware for long-term LLM memory (Ebbinghaus decay + RAG staging + user profile consolidation)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,6 +23,11 @@ dependencies = [
     "pydantic>=2",
     "sqlite-vec>=0.1.7",
 ]
+
+[project.urls]
+Homepage = "https://github.com/lijia-ming/memory-middleware"
+Repository = "https://github.com/lijia-ming/memory-middleware"
+"Upstream Project" = "https://github.com/lijia-ming/fireflymall-ai-customer-service"
 
 [project.optional-dependencies]
 # 生产可选组件：Redis 游标 / RabbitMQ 保底 / 真实嵌入

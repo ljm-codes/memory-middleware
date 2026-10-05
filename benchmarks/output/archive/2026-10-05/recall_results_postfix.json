@@ -1,0 +1,1009 @@
+{
+  "8-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1707,
+      "output_tokens": 258,
+      "llm_calls": 15
+    },
+    "summarize": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 5237,
+      "output_tokens": 605,
+      "llm_calls": 19
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 11733,
+      "output_tokens": 1410,
+      "llm_calls": 24
+    }
+  },
+  "16-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 2965,
+      "output_tokens": 460,
+      "llm_calls": 23
+    },
+    "summarize": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 8555,
+      "output_tokens": 972,
+      "llm_calls": 29
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 20671,
+      "output_tokens": 2428,
+      "llm_calls": 38
+    }
+  },
+  "24-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 3796,
+      "output_tokens": 567,
+      "llm_calls": 31
+    },
+    "summarize": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 12089,
+      "output_tokens": 1341,
+      "llm_calls": 40
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 28768,
+      "output_tokens": 3246,
+      "llm_calls": 52
+    }
+  },
+  "xs-8-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 732,
+      "output_tokens": 132,
+      "llm_calls": 8
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1516,
+      "output_tokens": 187,
+      "llm_calls": 9
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 14761,
+      "output_tokens": 2004,
+      "llm_calls": 17
+    }
+  },
+  "xs-16-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 828,
+      "output_tokens": 157,
+      "llm_calls": 8
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1579,
+      "output_tokens": 220,
+      "llm_calls": 9
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 14712,
+      "output_tokens": 2093,
+      "llm_calls": 17
+    }
+  },
+  "xs-24-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 606,
+      "output_tokens": 81,
+      "llm_calls": 8
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1548,
+      "output_tokens": 194,
+      "llm_calls": 9
+    },
+    "bmdm": {
+      "recall": 2,
+      "hits": [
+        true,
+        false,
+        true,
+        false
+      ],
+      "input_tokens": 14758,
+      "output_tokens": 1996,
+      "llm_calls": 17
+    }
+  },
+  "d-8-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 2991,
+      "output_tokens": 452,
+      "llm_calls": 24
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 10640,
+      "output_tokens": 1469,
+      "llm_calls": 31
+    },
+    "bmdm": {
+      "recall": 5,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 49972,
+      "output_tokens": 7096,
+      "llm_calls": 53
+    }
+  },
+  "d-16-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4381,
+      "output_tokens": 685,
+      "llm_calls": 32
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 12996,
+      "output_tokens": 1535,
+      "llm_calls": 41
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 73018,
+      "output_tokens": 9898,
+      "llm_calls": 71
+    }
+  },
+  "24-0-gated": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 3880,
+      "output_tokens": 578,
+      "llm_calls": 31,
+      "turns": 31,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 12029,
+      "output_tokens": 1324,
+      "llm_calls": 40,
+      "turns": 31,
+      "events": 9,
+      "internal_calls": 9,
+      "internal_per_turn": 0.29,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 13223,
+      "output_tokens": 861,
+      "llm_calls": 33,
+      "turns": 31,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.065,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-8-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 2641,
+      "output_tokens": 368,
+      "llm_calls": 24,
+      "turns": 24,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 9639,
+      "output_tokens": 1171,
+      "llm_calls": 31,
+      "turns": 24,
+      "events": 7,
+      "internal_calls": 7,
+      "internal_per_turn": 0.292,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 20625,
+      "output_tokens": 2473,
+      "llm_calls": 39,
+      "turns": 24,
+      "events": 5,
+      "internal_calls": 15,
+      "internal_per_turn": 0.625,
+      "internal_per_event": 3.0
+    }
+  },
+  "d-16-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4039,
+      "output_tokens": 586,
+      "llm_calls": 32,
+      "turns": 32,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 14173,
+      "output_tokens": 1856,
+      "llm_calls": 41,
+      "turns": 32,
+      "events": 9,
+      "internal_calls": 9,
+      "internal_per_turn": 0.281,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 29742,
+      "output_tokens": 3313,
+      "llm_calls": 53,
+      "turns": 32,
+      "events": 7,
+      "internal_calls": 21,
+      "internal_per_turn": 0.656,
+      "internal_per_event": 3.0
+    }
+  },
+  "d-24-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5011,
+      "output_tokens": 721,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 18711,
+      "output_tokens": 2460,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 47705,
+      "output_tokens": 4817,
+      "llm_calls": 67,
+      "turns": 40,
+      "events": 9,
+      "internal_calls": 27,
+      "internal_per_turn": 0.675,
+      "internal_per_event": 3.0
+    }
+  },
+  "d-16-0-gated": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4012,
+      "output_tokens": 580,
+      "llm_calls": 32,
+      "turns": 32,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 14687,
+      "output_tokens": 2027,
+      "llm_calls": 41,
+      "turns": 32,
+      "events": 9,
+      "internal_calls": 9,
+      "internal_per_turn": 0.281,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 17241,
+      "output_tokens": 972,
+      "llm_calls": 34,
+      "turns": 32,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.062,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-0-gated": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5279,
+      "output_tokens": 788,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 18275,
+      "output_tokens": 2330,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 23927,
+      "output_tokens": 1563,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "xs-16-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 756,
+      "output_tokens": 134,
+      "llm_calls": 8,
+      "turns": 8,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1530,
+      "output_tokens": 211,
+      "llm_calls": 9,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.125,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 4735,
+      "output_tokens": 654,
+      "llm_calls": 11,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 3,
+      "internal_per_turn": 0.375,
+      "internal_per_event": 3.0
+    }
+  },
+  "xs-24-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 664,
+      "output_tokens": 111,
+      "llm_calls": 8,
+      "turns": 8,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1645,
+      "output_tokens": 236,
+      "llm_calls": 9,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.125,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 4888,
+      "output_tokens": 438,
+      "llm_calls": 11,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 3,
+      "internal_per_turn": 0.375,
+      "internal_per_event": 3.0
+    }
+  },
+  "d-24-0-gated3": {
+    "baseline": {
+      "recall": 2,
+      "hits": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 7416,
+      "output_tokens": 1381,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 17481,
+      "output_tokens": 2127,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 23332,
+      "output_tokens": 1451,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-1-gated3": {
+    "baseline": {
+      "recall": 1,
+      "hits": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 7413,
+      "output_tokens": 1378,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 1,
+      "hits": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 18150,
+      "output_tokens": 2332,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 18237,
+      "output_tokens": 1000,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-2-gated3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4616,
+      "output_tokens": 622,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 1,
+      "hits": [
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 17362,
+      "output_tokens": 2099,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 23841,
+      "output_tokens": 1591,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  }
+}

@@ -8,8 +8,8 @@
         false,
         false
       ],
-      "input_tokens": 1716,
-      "output_tokens": 275,
+      "input_tokens": 1707,
+      "output_tokens": 258,
       "llm_calls": 15
     },
     "summarize": {
@@ -20,8 +20,8 @@
         true,
         false
       ],
-      "input_tokens": 4963,
-      "output_tokens": 591,
+      "input_tokens": 5237,
+      "output_tokens": 605,
       "llm_calls": 19
     },
     "bmdm": {
@@ -32,9 +32,9 @@
         true,
         false
       ],
-      "input_tokens": 31227,
-      "output_tokens": 2947,
-      "llm_calls": 47
+      "input_tokens": 11733,
+      "output_tokens": 1410,
+      "llm_calls": 24
     }
   },
   "16-0": {
@@ -46,8 +46,8 @@
         false,
         false
       ],
-      "input_tokens": 2467,
-      "output_tokens": 359,
+      "input_tokens": 2965,
+      "output_tokens": 460,
       "llm_calls": 23
     },
     "summarize": {
@@ -58,21 +58,21 @@
         true,
         false
       ],
-      "input_tokens": 8326,
-      "output_tokens": 996,
+      "input_tokens": 8555,
+      "output_tokens": 972,
       "llm_calls": 29
     },
     "bmdm": {
-      "recall": 2,
+      "recall": 3,
       "hits": [
         true,
-        false,
+        true,
         true,
         false
       ],
-      "input_tokens": 50346,
-      "output_tokens": 4664,
-      "llm_calls": 73
+      "input_tokens": 20671,
+      "output_tokens": 2428,
+      "llm_calls": 38
     }
   },
   "24-0": {
@@ -84,8 +84,8 @@
         false,
         false
       ],
-      "input_tokens": 3582,
-      "output_tokens": 513,
+      "input_tokens": 3796,
+      "output_tokens": 567,
       "llm_calls": 31
     },
     "summarize": {
@@ -96,8 +96,8 @@
         true,
         false
       ],
-      "input_tokens": 11809,
-      "output_tokens": 1360,
+      "input_tokens": 12089,
+      "output_tokens": 1341,
       "llm_calls": 40
     },
     "bmdm": {
@@ -108,9 +108,9 @@
         true,
         false
       ],
-      "input_tokens": 66751,
-      "output_tokens": 6024,
-      "llm_calls": 99
+      "input_tokens": 28768,
+      "output_tokens": 3246,
+      "llm_calls": 52
     }
   },
   "xs-8-0": {
@@ -122,8 +122,8 @@
         false,
         false
       ],
-      "input_tokens": 707,
-      "output_tokens": 160,
+      "input_tokens": 732,
+      "output_tokens": 132,
       "llm_calls": 8
     },
     "summarize": {
@@ -135,7 +135,7 @@
         false
       ],
       "input_tokens": 1516,
-      "output_tokens": 232,
+      "output_tokens": 187,
       "llm_calls": 9
     },
     "bmdm": {
@@ -146,9 +146,85 @@
         true,
         false
       ],
-      "input_tokens": 16177,
-      "output_tokens": 1337,
-      "llm_calls": 25
+      "input_tokens": 14761,
+      "output_tokens": 2004,
+      "llm_calls": 17
+    }
+  },
+  "xs-16-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 828,
+      "output_tokens": 157,
+      "llm_calls": 8
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1579,
+      "output_tokens": 220,
+      "llm_calls": 9
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 14712,
+      "output_tokens": 2093,
+      "llm_calls": 17
+    }
+  },
+  "xs-24-0": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 606,
+      "output_tokens": 81,
+      "llm_calls": 8
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1548,
+      "output_tokens": 194,
+      "llm_calls": 9
+    },
+    "bmdm": {
+      "recall": 2,
+      "hits": [
+        true,
+        false,
+        true,
+        false
+      ],
+      "input_tokens": 14758,
+      "output_tokens": 1996,
+      "llm_calls": 17
     }
   },
   "d-8-0": {
@@ -164,79 +240,41 @@
         false,
         false
       ],
-      "input_tokens": 3244,
-      "output_tokens": 543,
+      "input_tokens": 2991,
+      "output_tokens": 452,
       "llm_calls": 24
     },
     "summarize": {
       "recall": 2,
       "hits": [
-        true,
-        true,
         false,
+        true,
+        true,
         false,
         false,
         false,
         false,
         false
       ],
-      "input_tokens": 9274,
-      "output_tokens": 1134,
+      "input_tokens": 10640,
+      "output_tokens": 1469,
       "llm_calls": 31
     },
     "bmdm": {
-      "recall": 4,
+      "recall": 5,
       "hits": [
+        true,
+        true,
         true,
         false,
         false,
-        false,
-        true,
-        false,
-        true,
-        true
-      ],
-      "input_tokens": 51413,
-      "output_tokens": 5309,
-      "llm_calls": 76
-    }
-  },
-  "xs-16-0": {
-    "baseline": {
-      "recall": 0,
-      "hits": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "input_tokens": 642,
-      "output_tokens": 115,
-      "llm_calls": 8
-    },
-    "summarize": {
-      "recall": 0,
-      "hits": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "input_tokens": 1502,
-      "output_tokens": 217,
-      "llm_calls": 9
-    },
-    "bmdm": {
-      "recall": 3,
-      "hits": [
-        true,
         true,
         true,
         false
       ],
-      "input_tokens": 16654,
-      "output_tokens": 1264,
-      "llm_calls": 25
+      "input_tokens": 49972,
+      "output_tokens": 7096,
+      "llm_calls": 53
     }
   },
   "d-16-0": {
@@ -252,9 +290,182 @@
         false,
         false
       ],
-      "input_tokens": 4327,
-      "output_tokens": 691,
+      "input_tokens": 4381,
+      "output_tokens": 685,
       "llm_calls": 32
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 12996,
+      "output_tokens": 1535,
+      "llm_calls": 41
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 73018,
+      "output_tokens": 9898,
+      "llm_calls": 71
+    }
+  },
+  "24-0-gated": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 3880,
+      "output_tokens": 578,
+      "llm_calls": 31,
+      "turns": 31,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 12029,
+      "output_tokens": 1324,
+      "llm_calls": 40,
+      "turns": 31,
+      "events": 9,
+      "internal_calls": 9,
+      "internal_per_turn": 0.29,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 13223,
+      "output_tokens": 861,
+      "llm_calls": 33,
+      "turns": 31,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.065,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-8-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 2641,
+      "output_tokens": 368,
+      "llm_calls": 24,
+      "turns": 24,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 9639,
+      "output_tokens": 1171,
+      "llm_calls": 31,
+      "turns": 24,
+      "events": 7,
+      "internal_calls": 7,
+      "internal_per_turn": 0.292,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 20625,
+      "output_tokens": 2473,
+      "llm_calls": 39,
+      "turns": 24,
+      "events": 5,
+      "internal_calls": 15,
+      "internal_per_turn": 0.625,
+      "internal_per_event": 3.0
+    }
+  },
+  "d-16-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4039,
+      "output_tokens": 586,
+      "llm_calls": 32,
+      "turns": 32,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
     },
     "summarize": {
       "recall": 2,
@@ -268,28 +479,233 @@
         false,
         false
       ],
-      "input_tokens": 12375,
-      "output_tokens": 1480,
-      "llm_calls": 41
+      "input_tokens": 14173,
+      "output_tokens": 1856,
+      "llm_calls": 41,
+      "turns": 32,
+      "events": 9,
+      "internal_calls": 9,
+      "internal_per_turn": 0.281,
+      "internal_per_event": 1.0
     },
     "bmdm": {
-      "recall": 5,
+      "recall": 7,
       "hits": [
         true,
-        false,
+        true,
         true,
         false,
         true,
-        false,
+        true,
         true,
         true
       ],
-      "input_tokens": 71093,
-      "output_tokens": 7394,
-      "llm_calls": 102
+      "input_tokens": 29742,
+      "output_tokens": 3313,
+      "llm_calls": 53,
+      "turns": 32,
+      "events": 7,
+      "internal_calls": 21,
+      "internal_per_turn": 0.656,
+      "internal_per_event": 3.0
     }
   },
-  "xs-24-0": {
+  "d-24-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5011,
+      "output_tokens": 721,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 18711,
+      "output_tokens": 2460,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 47705,
+      "output_tokens": 4817,
+      "llm_calls": 67,
+      "turns": 40,
+      "events": 9,
+      "internal_calls": 27,
+      "internal_per_turn": 0.675,
+      "internal_per_event": 3.0
+    }
+  },
+  "d-16-0-gated": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4012,
+      "output_tokens": 580,
+      "llm_calls": 32,
+      "turns": 32,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 2,
+      "hits": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 14687,
+      "output_tokens": 2027,
+      "llm_calls": 41,
+      "turns": 32,
+      "events": 9,
+      "internal_calls": 9,
+      "internal_per_turn": 0.281,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 17241,
+      "output_tokens": 972,
+      "llm_calls": 34,
+      "turns": 32,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.062,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-0-gated": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5279,
+      "output_tokens": 788,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 18275,
+      "output_tokens": 2330,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 23927,
+      "output_tokens": 1563,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "xs-16-0-postfix": {
     "baseline": {
       "recall": 0,
       "hits": [
@@ -298,9 +714,14 @@
         false,
         false
       ],
-      "input_tokens": 663,
-      "output_tokens": 133,
-      "llm_calls": 8
+      "input_tokens": 756,
+      "output_tokens": 134,
+      "llm_calls": 8,
+      "turns": 8,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
     },
     "summarize": {
       "recall": 0,
@@ -310,9 +731,14 @@
         false,
         false
       ],
-      "input_tokens": 1540,
-      "output_tokens": 232,
-      "llm_calls": 9
+      "input_tokens": 1530,
+      "output_tokens": 211,
+      "llm_calls": 9,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.125,
+      "internal_per_event": 1.0
     },
     "bmdm": {
       "recall": 3,
@@ -322,17 +748,140 @@
         true,
         false
       ],
-      "input_tokens": 16413,
-      "output_tokens": 1257,
-      "llm_calls": 25
+      "input_tokens": 4735,
+      "output_tokens": 654,
+      "llm_calls": 11,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 3,
+      "internal_per_turn": 0.375,
+      "internal_per_event": 3.0
     }
   },
-  "d-24-0": {
+  "xs-24-0-postfix": {
     "baseline": {
       "recall": 0,
       "hits": [
         false,
         false,
+        false,
+        false
+      ],
+      "input_tokens": 664,
+      "output_tokens": 111,
+      "llm_calls": 8,
+      "turns": 8,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1645,
+      "output_tokens": 236,
+      "llm_calls": 9,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.125,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 4888,
+      "output_tokens": 438,
+      "llm_calls": 11,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 3,
+      "internal_per_turn": 0.375,
+      "internal_per_event": 3.0
+    }
+  },
+  "d-24-0-gated3": {
+    "baseline": {
+      "recall": 2,
+      "hits": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 7416,
+      "output_tokens": 1381,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 17481,
+      "output_tokens": 2127,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 23332,
+      "output_tokens": 1451,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-1-gated3": {
+    "baseline": {
+      "recall": 1,
+      "hits": [
+        false,
+        true,
         false,
         false,
         false,
@@ -340,9 +889,14 @@
         false,
         false
       ],
-      "input_tokens": 5492,
-      "output_tokens": 876,
-      "llm_calls": 40
+      "input_tokens": 7413,
+      "output_tokens": 1378,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
     },
     "summarize": {
       "recall": 1,
@@ -356,25 +910,1259 @@
         false,
         false
       ],
-      "input_tokens": 15842,
-      "output_tokens": 1853,
-      "llm_calls": 52
+      "input_tokens": 18150,
+      "output_tokens": 2332,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
     },
     "bmdm": {
-      "recall": 4,
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 18237,
+      "output_tokens": 1000,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-2-gated3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4616,
+      "output_tokens": 622,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 1,
       "hits": [
         true,
         false,
         false,
         false,
-        true,
         false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 17362,
+      "output_tokens": 2099,
+      "llm_calls": 52,
+      "turns": 40,
+      "events": 12,
+      "internal_calls": 12,
+      "internal_per_turn": 0.3,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
         true,
         true
       ],
-      "input_tokens": 90270,
-      "output_tokens": 9757,
-      "llm_calls": 128
+      "input_tokens": 23841,
+      "output_tokens": 1591,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "24-0-fair": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 3718,
+      "output_tokens": 525,
+      "llm_calls": 31,
+      "turns": 31,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 14088,
+      "output_tokens": 895,
+      "llm_calls": 32,
+      "turns": 31,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.032,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 14733,
+      "output_tokens": 729,
+      "llm_calls": 33,
+      "turns": 31,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.065,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-0-fair3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5577,
+      "output_tokens": 866,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 28898,
+      "output_tokens": 1807,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 4,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "input_tokens": 18846,
+      "output_tokens": 1079,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-1-fair3": {
+    "baseline": {
+      "recall": 1,
+      "hits": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 7336,
+      "output_tokens": 1316,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 31907,
+      "output_tokens": 2095,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 22034,
+      "output_tokens": 1363,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-2-fair3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4952,
+      "output_tokens": 712,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 27436,
+      "output_tokens": 1719,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 21303,
+      "output_tokens": 1111,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "xs-8-0-postfix": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 644,
+      "output_tokens": 91,
+      "llm_calls": 8,
+      "turns": 8,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 1565,
+      "output_tokens": 210,
+      "llm_calls": 9,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.125,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "input_tokens": 4511,
+      "output_tokens": 456,
+      "llm_calls": 11,
+      "turns": 8,
+      "events": 1,
+      "internal_calls": 3,
+      "internal_per_turn": 0.375,
+      "internal_per_event": 3.0
+    }
+  },
+  "d-24-0-diag3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4699,
+      "output_tokens": 643,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 22227,
+      "output_tokens": 1132,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 19188,
+      "output_tokens": 1066,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-1-diag3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5394,
+      "output_tokens": 842,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 27499,
+      "output_tokens": 1661,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 21197,
+      "output_tokens": 1010,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-2-diag3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4450,
+      "output_tokens": 579,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 20282,
+      "output_tokens": 995,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 6,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true
+      ],
+      "input_tokens": 17147,
+      "output_tokens": 988,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-0-stable6": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5175,
+      "output_tokens": 762,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 24141,
+      "output_tokens": 1267,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 3,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 20428,
+      "output_tokens": 1108,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-1-stable6": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 4755,
+      "output_tokens": 672,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 20723,
+      "output_tokens": 1012,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 26027,
+      "output_tokens": 1104,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-2-stable6": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5237,
+      "output_tokens": 795,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 25348,
+      "output_tokens": 1515,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 26808,
+      "output_tokens": 1144,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0
+    }
+  },
+  "d-24-0-fixed3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5431,
+      "output_tokens": 826,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 20293,
+      "output_tokens": 964,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0,
+      "memory_payload": {
+        "summary_tokens_last": 236,
+        "summary_tokens_total": 236,
+        "summary_texts": [
+          "## SESSION INTENT\n用户正在与客服助手进行对话，交替提供个人信息/订单信息，以及询问商店政策（营业时间、支付方式、发货时效、退货政策、会员折扣、发票、实体店、客服时间）。用户多次纠正或补充助手给出的政策信息，助手均以\"以您说的为准\"确认。整体目标是完成一次客服咨询会话，并确保助手记录用户提供的所有信息。\n\n## SUMMARY\n对话中用户提供了以下个人信息，助手均已确认记录：\n- 宠物：养了一只猫，名叫小白\n- 订单号：20260815-0042（助手表示会查询状态）\n- 退款银行卡尾号：3366\n- 生日：3 月 14 日\n- 手机：华为 Mate 60\n- 联系时间偏好：晚上十点之后才有空\n- 饮食偏好：特别喜欢重庆火锅\n- 住址：朝阳区望京街道\n\n关于商店政策，用户多次纠正/补充助手的信息，最终以用户说法为准：\n- 营业时间：每天 9:00–22:00（助手最初说 9"
+        ]
+      }
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 21845,
+      "output_tokens": 1146,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0,
+      "memory_payload": {
+        "injected_tokens": 223,
+        "profile_tokens": 1,
+        "injected_chars": 733,
+        "injected_preview": "\n我的生日是 3 月 14 日。\n好的，已记录。请问还有其他需要帮助的吗？\n我的手机是华为 Mate 60。\n好的，已记录。请问还有其他需要帮助的吗？\n我一般晚上十点之后才有空。\n好的，已记录。请问还有其他需要帮助的吗？\n我特别喜欢重庆火锅。\n好的，已记录。请问还有其他需要帮助的吗？\n我住在朝阳区望京街道。\n好的，已记录。请问还有其他需要帮助的吗？\n我家养了一只猫，叫小白。\n好的，小白是您的猫咪。请问有什么可以帮您的？\n我上周下的订单号是 20260815-0042。\n请稍等，我帮您查询订单 20260815-0042 的状态。\n退款请退到我尾号 3366 的银行卡。\n好的，退款将退至尾号 3366 的银行卡。请确认是否提交？\n有会员折扣吗？\n有的，我们提供会员折扣。请问还有其他需要帮助的吗？\n有，注册会员享九八折。\n好的，已确认：注册会员享 **98 折**。请问还有其他需要帮助的吗？\n"
+      }
+    }
+  },
+  "d-24-1-fixed3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5058,
+      "output_tokens": 746,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 27754,
+      "output_tokens": 1671,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0,
+      "memory_payload": {
+        "summary_tokens_last": 273,
+        "summary_tokens_total": 273,
+        "summary_texts": [
+          "## SESSION INTENT\n用户最初提供了订单号 20260815-0042 和退款银行卡信息（尾号 3366），意图似乎是查询订单状态或申请退款。但随后用户连续发送了大量与订单/退款无关的个人信息和商店政策陈述（如宠物名、生日、手机型号、住址、营业时间、支付方式、发货时效、退货政策、会员折扣、发票、实体店、客服时间等），且这些陈述多为用户单方面“告知”或“确认”信息，而非明确请求。整体会话意图模糊，尚未明确用户最终想要执行的具体操作。\n\n## SUMMARY\n- 用户提供了订单号 **20260815-0042**，并指定退款至尾号 **3366** 的银行卡。\n- 助手多次尝试引导用户明确需求（查询物流、申请退款、退货、开票等），但用户未直接回应，而是持续发送无关或泛化的信息。\n- 用户发送的信息包括：猫叫小白、生日 3 月 14 日、手机华为 Mate 60、晚上十点后有空、"
+        ]
+      }
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 26291,
+      "output_tokens": 1421,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0,
+      "memory_payload": {
+        "injected_tokens": 251,
+        "profile_tokens": 1,
+        "injected_chars": 828,
+        "injected_preview": "\n我家养了一只猫，叫小白。\n您好！请问有什么可以帮您的？\n我上周下的订单号是 20260815-0042。\n您好，请稍等，我帮您查询订单 20260815-0042 的状态。请问您想了解哪方面的信息，比如物流进度或退换货？\n退款请退到我尾号 3366 的银行卡。\n好的，退款将退至您尾号 3366 的银行卡。请问您需要退款的商品是哪一件？\n我的生日是 3 月 14 日。\n好的，已记录。不过退款处理需要确认您要退的商品，请提供商品名称或订单中的具体项目。\n我的手机是华为 Mate 60。\n好的。为了帮您处理退款，请告诉我您要退的是哪件商品。\n我一般晚上十点之后才有空。\n好的，已了解。退款只需确认商品即可，不需要特定时间。请提供您要退的商品名称或订单中的具体项目。\n我特别喜欢重庆火锅。\n好的，已了解。不过要处理您的退款，还需要您提供要退的商品名称或订单中的具体项目哦。\n我住在朝阳区望京街道。\n好"
+      }
+    }
+  },
+  "d-24-2-fixed3": {
+    "baseline": {
+      "recall": 1,
+      "hits": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 6604,
+      "output_tokens": 1159,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 31135,
+      "output_tokens": 1977,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0,
+      "memory_payload": {
+        "summary_tokens_last": 302,
+        "summary_tokens_total": 302,
+        "summary_texts": [
+          "## SESSION INTENT\n\n用户正在与助手进行多轮对话，表面上是在咨询订单 **20260815-0042** 的退款事宜，但实际上用户持续提供大量与退款无关的个人信息和商店政策信息（如宠物、生日、手机型号、地址、营业时间、支付方式、发货时效、退货政策、会员折扣、发票、实体店、客服时间等）。助手在每轮都尝试确认是否提交退款申请，但用户始终未明确回应。\n\n## SUMMARY\n\n- 用户最初提到养了一只叫**小白**的猫。\n- 用户提供了订单号 **20260815-0042**，助手表示可以查询状态。\n- 用户要求退款退到尾号 **3366** 的银行卡，助手确认并多次询问是否提交退款申请。\n- 用户随后连续提供了大量无关信息，助手均予以记录，并在每轮末尾重复询问是否提交订单 **20260815-0042** 的退款申请。\n- 用户始终未对退款申请作出明确答复，而是继续提供新信"
+        ]
+      }
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 21607,
+      "output_tokens": 1065,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0,
+      "memory_payload": {
+        "injected_tokens": 217,
+        "profile_tokens": 1,
+        "injected_chars": 714,
+        "injected_preview": "\n我的生日是 3 月 14 日。\n好的，已记录。请问还有其他需要帮助的吗？\n我的手机是华为 Mate 60。\n好的，已记录。请问还有其他需要帮助的吗？\n我一般晚上十点之后才有空。\n好的，已记录您晚上十点后方便联系。请问还有其他需要帮助的吗？\n我特别喜欢重庆火锅。\n好的，已记录。请问还有其他需要帮助的吗？\n我住在朝阳区望京街道。\n好的，已记录您的地址。请问还有其他需要帮助的吗？\n我家养了一只猫，叫小白。\n好的，小白真可爱的名字！请问有什么可以帮您的吗？\n我上周下的订单号是 20260815-0042。\n好的，请稍等，我帮您查询订单 20260815-0042 的状态。\n退款请退到我尾号 3366 的银行卡。\n好的，退款将退至您尾号 3366 的银行卡，请确认是否提交？\n有会员折扣吗？\n抱歉，我这边无法确认会员折扣信息。建议您查看会员页面或联系门店客服确认。\n有，注册会员享九八折。\n好的，已记"
+      }
+    }
+  },
+  "d-24-0-default3": {
+    "baseline": {
+      "recall": 1,
+      "hits": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 7489,
+      "output_tokens": 1388,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 7,
+      "hits": [
+        true,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 19740,
+      "output_tokens": 944,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0,
+      "memory_payload": {
+        "summary_tokens_last": 221,
+        "summary_tokens_total": 221,
+        "summary_texts": [
+          "## SESSION INTENT\n\n用户正在与客服助手进行多轮对话，主要目的是：提供个人信息（用于订单/退款处理）以及咨询商店的各项服务政策（营业时间、支付方式、发货时效、退货政策、会员折扣、发票、实体店、客服时间）。用户还会对助手给出的信息进行更正或补充。\n\n## SUMMARY\n\n### 用户个人信息（已记录）\n- 养了一只猫，叫小白\n- 订单号：20260815-0042（上周下单）\n- 退款银行卡尾号：3366（已登记退款）\n- 生日：3月14日\n- 手机：华为 Mate 60\n- 空闲时间：一般晚上十点之后\n- 喜好：重庆火锅\n- 住址：朝阳区望京街道\n\n### 商店政策信息（经用户更正/补充后的最终版本）\n- **营业时间**：早上9:00到晚上22:00（用户更正了助手最初说的10:00开门）\n- **支付方式**：支持货到付款和在线支付\n- **发货时效**：现货一般两天"
+        ]
+      }
+    },
+    "bmdm": {
+      "recall": 7,
+      "hits": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 18746,
+      "output_tokens": 1181,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0,
+      "memory_payload": {
+        "injected_tokens": 91,
+        "profile_tokens": 1,
+        "injected_chars": 299,
+        "injected_preview": "\n我特别喜欢重庆火锅。\n好的，已记录。请问还有其他需要帮助的吗？\n我住在朝阳区望京街道。\n好的，已记录您的地址。请问还有其他需要帮助的吗？\n我的生日是 3 月 14 日。\n好的，已记录。请问还有其他需要帮助的吗？\n我的手机是华为 Mate 60。\n好的，已记录。请问还有其他需要帮助的吗？\n我一般晚上十点之后才有空。\n好的，已记录您晚上十点后方便联系。请问还有其他需要帮助的吗？\n我上周下的订单号是 20260815-0042。\n好的，订单号 20260815-0042。请问您想查询什么？\n退款请退到我尾号 3366 的银行卡。\n好的，退款将退至您尾号 3366 的银行卡。请问还有什么可以帮您？"
+      }
+    }
+  },
+  "d-24-1-default3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5333,
+      "output_tokens": 814,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 22682,
+      "output_tokens": 1167,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0,
+      "memory_payload": {
+        "summary_tokens_last": 265,
+        "summary_tokens_total": 265,
+        "summary_texts": [
+          "## SESSION INTENT\n\n用户正在与一个客服助手对话，主要目标似乎是处理订单 20260815-0042 的退款/物流问题，同时用户陆续提供了大量个人信息和商店政策信息。助手需要记录这些信息并继续协助用户完成退款等操作。\n\n## SUMMARY\n\n**核心任务：**\n- 用户上周下的订单号为 **20260815-0042**，助手正在查询该订单的物流状态。\n- 用户要求退款退到**尾号 3366 的银行卡**，助手已记录，并确认是否要退订单 20260815-0042（用户尚未明确确认）。\n\n**用户提供的个人信息（助手均已记录）：**\n- 养了一只猫，叫小白\n- 生日：3 月 14 日\n- 手机：华为 Mate 60\n- 一般晚上十点之后才有空\n- 喜欢重庆火锅\n- 住在朝阳区望京街道\n\n**用户提供的商店政策信息（助手均已记录）：**\n- 营业时间：早上九点到晚上十点\n-"
+        ]
+      }
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 21056,
+      "output_tokens": 1384,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0,
+      "memory_payload": {
+        "injected_tokens": 104,
+        "profile_tokens": 1,
+        "injected_chars": 342,
+        "injected_preview": "\n我家养了一只猫，叫小白。\n好的，小白真可爱！有什么可以帮您的吗？\n我上周下的订单号是 20260815-0042。\n请稍等，我帮您查询订单 20260815-0042 的状态。\n退款请退到我尾号 3366 的银行卡。\n好的，退款将退至尾号 3366 的银行卡。请确认卡号无误，我这边为您提交。\n我特别喜欢重庆火锅。\n好的，记录啦～请问还有其他可以帮您的吗？\n我住在朝阳区望京街道。\n好的，已记录您住在朝阳区望京街道。请问还有其他可以帮您的吗？\n我的生日是 3 月 14 日。\n好的，已记录。请问还有其他可以帮您的吗？\n我的手机是华为 Mate 60。\n好的，已记录。请问还有其他可以帮您的吗？\n我一般晚上十点之后才有空。\n好的，已记录您晚上十点后方便联系。请问还有其他可以帮您的吗？"
+      }
+    }
+  },
+  "d-24-2-default3": {
+    "baseline": {
+      "recall": 0,
+      "hits": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "input_tokens": 5213,
+      "output_tokens": 775,
+      "llm_calls": 40,
+      "turns": 40,
+      "events": 0,
+      "internal_calls": 0,
+      "internal_per_turn": 0.0,
+      "internal_per_event": null
+    },
+    "summarize": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 28260,
+      "output_tokens": 1753,
+      "llm_calls": 41,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 1,
+      "internal_per_turn": 0.025,
+      "internal_per_event": 1.0,
+      "memory_payload": {
+        "summary_tokens_last": 280,
+        "summary_tokens_total": 280,
+        "summary_texts": [
+          "## SESSION INTENT\n\n用户正在办理一笔订单退款，需要确认退款信息。核心任务是：为订单号 **20260815-0042** 办理退款，退款至尾号 **3366** 的银行卡。助手需要用户明确确认这笔退款操作。\n\n## SUMMARY\n\n- **核心待办事项**：确认订单 **20260815-0042** 退款到尾号 **3366** 的银行卡。助手已多次请求用户确认，但用户始终未明确回复\"确认\"，而是不断提供无关的个人信息或询问商店政策。\n- **已记录的关键信息**：\n  - 订单号：20260815-0042\n  - 退款银行卡尾号：3366\n- **用户提供的无关/背景信息**（已记录但非核心）：\n  - 养了一只猫叫小白\n  - 生日 3 月 14 日\n  - 手机是华为 Mate 60\n  - 一般晚上十点之后才有空\n  - 喜欢重庆火锅\n  - 住在朝阳区望京"
+        ]
+      }
+    },
+    "bmdm": {
+      "recall": 8,
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "input_tokens": 20129,
+      "output_tokens": 1102,
+      "llm_calls": 42,
+      "turns": 40,
+      "events": 1,
+      "internal_calls": 2,
+      "internal_per_turn": 0.05,
+      "internal_per_event": 2.0,
+      "memory_payload": {
+        "injected_tokens": 166,
+        "profile_tokens": 1,
+        "injected_chars": 545,
+        "injected_preview": "\n我家养了一只猫，叫小白。\n小白真可爱！有什么我可以帮您的吗？\n我上周下的订单号是 20260815-0042。\n请问您想查询这个订单的什么信息？\n退款请退到我尾号 3366 的银行卡。\n好的，已为您登记：订单 20260815-0042 的退款将退至尾号 3366 的银行卡。请问还有其他需要吗？\n我的生日是 3 月 14 日。\n好的，已记录。请问还有其他需要吗？\n我的手机是华为 Mate 60。\n好的，已记录。请问还有其他需要吗？\n我一般晚上十点之后才有空。\n好的，已记录您晚上十点后方便联系。请问还有其他需要吗？\n我特别喜欢重庆火锅。\n好的，已记录。请问还有其他需要吗？\n我住在朝阳区望京街道。\n好的，已记录您的地址。请问还有其他需要吗？\n你们有没有实体店？\n抱歉，我这边没有您所在门店的实体店信息。建议您通过商店页面或官方客服查询。\n我们以线上为主，部分城市有体验店。\n好的，已记录。请问还"
+      }
     }
   }
 }

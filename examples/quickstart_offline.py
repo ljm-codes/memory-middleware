@@ -53,7 +53,8 @@ def main():
     # ---- 注入假模型与离线存储（生产请替换为真实模型 + Redis + 真实嵌入） ----
     split_llm = ScriptedLLM(SummaryMemoryAi(
         theme_num=1,
-        config=[SummaryMemoryFragmentsConfig(theme='个人信息', type=['identity', 'preference'], scope='0-2')],
+        config=[SummaryMemoryFragmentsConfig(theme='个人信息', type=['identity', 'preference'],
+                                             start_idx=0, end_idx=2)],
         current_theme='个人信息',
     ))
     summary_llm = ScriptedLLM(UserProfile(user_name='张三', user_hobby=['读书', '游泳']))

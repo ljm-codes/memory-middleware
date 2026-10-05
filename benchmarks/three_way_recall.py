@@ -19,6 +19,7 @@
 import argparse
 import asyncio
 import json
+import math
 import os
 import pathlib
 import sys
@@ -30,6 +31,10 @@ _PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 from dotenv import load_dotenv
 load_dotenv(_PROJECT_ROOT / '.env')
+
+# 基准跑分强制关闭 LangSmith 追踪：免费额度有限，开着会拖慢并持续报"超过请求上限"
+os.environ['LANGSMITH_TRACING'] = 'false'
+os.environ['LANGCHAIN_TRACING_V2'] = 'false'
 
 from langchain.agents.middleware import ModelRequest, ModelResponse
 from langchain.agents.middleware.summarization import SummarizationMiddleware
@@ -47,6 +52,7 @@ from memory_middleware import (
 )
 from memory_middleware.models import SummaryMemoryAi, TimeMemoryFormulaParam, UserProfile
 from memory_middleware.recovery import NullRecovery
+from memory_middleware.token_counter import default_token_counter
 from memory_middleware.storage.kv import MemoryKVStore
 from memory_middleware.storage.vectors import HashEmbeddings, SQLiteVecStore
 
@@ -187,6 +193,79 @@ def _make_model(handler, schema=None, max_tokens=None, temperature=0.2):
 
 
 # ---------------------------------------------------------------------------
+# 虚拟时钟（--virtual-turn-seconds）
+# 成熟度门 M(Δt)、时间衰减 T(m) 都是分钟/小时量级，压缩时间的基准里
+# 用真实秒表测不出生产语义（门要么永不成熟、要么一开就每轮跑）。
+# 开虚拟时钟后：消息打点、maturity、time_decay 全部走虚拟时间，
+# 而"每轮推进多少秒"就是这次测量里"用户一轮对话花了多久"的定义。
+# ---------------------------------------------------------------------------
+
+class ClockShim:
+    """每轮推进固定秒数的虚拟时钟（提供 .time()，用于顶替模块内的 time 模块）"""
+
+    def __init__(self, start: float, seconds_per_turn: float):
+        self.now = start
+        self.step = seconds_per_turn
+
+    def time(self) -> float:
+        return self.now
+
+    def tick(self) -> None:
+        self.now += self.step
+
+
+CLOCK: ClockShim | None = None
+BMDM_OVERRIDES: dict = {}   # BMDM 门控/节奏参数覆盖（CLI：--production-gates 等）
+SUMMARIZE_OVERRIDES: dict = {}  # 官方摘要的窗口预算覆盖（CLI：--summarize-trigger 等，用于同阈值对照）
+
+
+def install_virtual_clock(seconds_per_turn: float) -> ClockShim:
+    global CLOCK
+    from memory_middleware import middleware as _mw, spliter as _sp, rag as _rag
+    CLOCK = ClockShim(start=time.time(), seconds_per_turn=seconds_per_turn)
+    for mod in (_mw, _sp, _rag):
+        mod.time = CLOCK
+    return CLOCK
+
+
+def _now() -> float:
+    return CLOCK.time() if CLOCK else time.time()
+
+
+def _tick() -> None:
+    if CLOCK:
+        CLOCK.tick()
+
+
+# 记忆内容体积计量：两边都按包内默认口径（字数/3.3）算正文 token，
+# 口径与中间件内部的 token_counter 一致，避免"用官方 usage 比估算值"的错配。
+_TOKEN_COUNTER = default_token_counter()
+
+
+def _count_text(text: str) -> int:
+    return math.ceil(_TOKEN_COUNTER([AIMessage(content=text)])) if text else 0
+
+
+def summarize_usage(runner, handler, hits, turns: int) -> dict:
+    """归档一次运行：总量 + 按事件归一化（主对话恰好每轮 1 次调用 → 内部调用 = 总调用 − 轮数）"""
+    calls = len(handler.usages)
+    internal = calls - turns
+    events = getattr(runner, 'events', 0)
+    return {
+        'recall': sum(hits),
+        'hits': [bool(h) for h in hits],
+        'input_tokens': sum(u['hit'] + u['miss'] for u in handler.usages),
+        'output_tokens': sum(u['out'] for u in handler.usages),
+        'llm_calls': calls,
+        'turns': turns,
+        'events': events,
+        'internal_calls': internal,
+        'internal_per_turn': round(internal / turns, 3) if turns else None,
+        'internal_per_event': round(internal / events, 3) if events else None,
+    }
+
+
+# ---------------------------------------------------------------------------
 # 驱动循环：三种配置共用同一结构与对话文本
 # ---------------------------------------------------------------------------
 
@@ -203,6 +282,7 @@ class ConvRunner:
             'user_profile': '',
         }
         self.replies: list[str] = []
+        self.events = 0   # BMDM：检索注入次数；SummarizationMiddleware：摘要触发次数
 
     def _apply_state_update(self, update):
         if not update:
@@ -219,7 +299,7 @@ class ConvRunner:
         text = str(out.content)
         self.replies.append(text)
         self.state['messages'].append(AIMessage(
-            content=text, additional_kwargs={'time': time.time()}))
+            content=text, additional_kwargs={'time': _now()}))
         return out
 
     async def turn(self, text: str):
@@ -235,7 +315,8 @@ class BaselineRunner(ConvRunner):
     """无记忆基线：上下文只保留最近 BUDGET 条消息"""
 
     async def turn(self, text: str):
-        self.state['messages'].append(HumanMessage(text, additional_kwargs={'time': time.time()}))
+        _tick()
+        self.state['messages'].append(HumanMessage(text, additional_kwargs={'time': _now()}))
         recent = self.state['messages'][-BUDGET:]
         await self._chat_call([SystemMessage(content=self.state['system_prompt']), *recent])
 
@@ -243,21 +324,48 @@ class BaselineRunner(ConvRunner):
 class SummarizeRunner(ConvRunner):
     """官方 SummarizationMiddleware：超过阈值把旧消息压成摘要"""
 
+    SUMMARY_MARKER = 'Here is a summary of the conversation to date:'   # langchain 源码固定前缀
+
     def __init__(self, handler, chat_model):
         super().__init__(handler, chat_model)
+        cfg = dict(trigger=BUDGET + 2, keep=4, max_tokens=None)
+        cfg.update(SUMMARIZE_OVERRIDES)
+        # 摘要模型与聊天模型分离：早期版本共用 max_tokens=100 的聊天模型，摘要被截断到 100 token
+        # （对官方不利）。这里给摘要单独一个不设上限、低温的模型——两边都按各自最佳状态比。
+        summary_model = _make_model(handler, max_tokens=cfg['max_tokens'], temperature=0.2)
         self.mw = SummarizationMiddleware(
-            model=chat_model,
-            trigger=('messages', BUDGET + 2),
-            keep=('messages', 4),
+            model=summary_model,
+            trigger=('messages', cfg['trigger']),
+            keep=('messages', cfg['keep']),
         )
         self._runtime = SimpleNamespace(store=None, context=SimpleNamespace(user_id='bench'))
+        self.summary_texts: list[str] = []   # 每次摘要的正文（体积计量的原料）
 
     async def turn(self, text: str):
-        self.state['messages'].append(HumanMessage(text, additional_kwargs={'time': time.time()}))
+        _tick()
+        self.state['messages'].append(HumanMessage(text, additional_kwargs={'time': _now()}))
         update = await self.mw.abefore_model(self.state, self._runtime)
         self._apply_state_update(update)
+        if update:
+            self.events += 1   # 官方中间件真正触发了摘要
+            self._capture_summary()
         await self._chat_call([
             SystemMessage(content=self.state['system_prompt']), *self.state['messages']])
+
+    def _capture_summary(self):
+        """取出刚写入的摘要正文（官方以带固定前缀的 HumanMessage 插入上下文）"""
+        for msg in self.state['messages']:
+            content = msg.content if isinstance(msg.content, str) else str(msg.content)
+            if content.startswith(self.SUMMARY_MARKER):
+                self.summary_texts.append(content[len(self.SUMMARY_MARKER):].strip())
+
+    def memory_payload(self) -> dict:
+        """记忆内容体积：官方写入上下文的摘要正文 token（最后一次为准，累计值另给）"""
+        return {
+            'summary_tokens_last': _count_text(self.summary_texts[-1]) if self.summary_texts else 0,
+            'summary_tokens_total': sum(_count_text(t) for t in self.summary_texts),
+            'summary_texts': [t[:400] for t in self.summary_texts],
+        }
 
 
 class BMDMRunner(ConvRunner):
@@ -266,16 +374,22 @@ class BMDMRunner(ConvRunner):
     def __init__(self, handler, chat_model, tmp_dir: pathlib.Path, embeddings,
                  store=None, kv_store=None):
         super().__init__(handler, chat_model)
+        # 默认是"门控不阻塞 + 压缩时间尺度"（A 组）；B 组用 --production-gates + 虚拟时钟跑生产语义
+        cfg = dict(trigger_threshold=BUDGET, slice_value=0.0, long_term_value=0.0,
+                   tau_m=60.0, c_m=0.5, tau=3600.0, c_t=0.5)
+        cfg.update(BMDM_OVERRIDES)
         config = MemoryConfig(
             pattern='messages',
-            trigger_threshold=BUDGET,
+            trigger_threshold=cfg['trigger_threshold'],
             vocation=VocationParams(
-                tau_m=60, c_m=0.5, tau=3600, c_t=0.5,
-                slice_value=0.0, long_term_value=0.0),
+                tau_m=cfg['tau_m'], c_m=cfg['c_m'], tau=cfg['tau'], c_t=cfg['c_t'],
+                slice_value=cfg['slice_value'], long_term_value=cfg['long_term_value']),
             rag_db_path=str(tmp_dir / 'mem.db'),
             initial_prompt='你是智能客服，请基于用户画像与记忆片段简洁回答。',
-            retrieve_k=6,
-            top_k=3,
+            retrieve_k=cfg.get('retrieve_k'),
+            top_k=cfg.get('top_k', 4),
+            top_k_max_per_theme=cfg.get('top_k_max_per_theme'),
+            always_inject_types=cfg.get('always_inject_types', ('identity', 'preference')),
         )
         vec_store = SQLiteVecStore(config.rag_db_path, embeddings)
         self.vec_store = vec_store  # 诊断/报告用
@@ -306,7 +420,7 @@ class BMDMRunner(ConvRunner):
         text = str(out.content)
         self.replies.append(text)
         self.state['messages'].append(AIMessage(
-            content=text, additional_kwargs={'time': time.time()}))
+            content=text, additional_kwargs={'time': _now()}))
         return ModelResponse(result=[out])
 
     async def _refresh_user_profile(self):
@@ -326,8 +440,39 @@ class BMDMRunner(ConvRunner):
             lines.append(f"{key}: {value}")
         self.state['user_profile'] = '\n'.join(lines)
 
+    MEMORY_MARKER = '以下为相关片段：'   # SystemPrompt.__str__ 里片段层的分隔标记
+
+    def memory_payload(self) -> dict:
+        """记忆内容体积：注入的片段正文 token + 画像 token（分开计，画像层官方没有对应物）"""
+        prompt = self.state.get('system_prompt') or ''
+        core = getattr(self.mw.config, 'initial_prompt', '') or ''
+        body = prompt[len(core):] if core and prompt.startswith(core) else prompt
+        profile, fragments = body.split(self.MEMORY_MARKER, 1) if self.MEMORY_MARKER in body else (body, '')
+        return {
+            'injected_tokens': _count_text(fragments),
+            'profile_tokens': _count_text(profile),
+            'injected_chars': len(fragments),
+            'injected_preview': fragments[:400],
+        }
+
+    def diagnostics(self) -> dict:
+        """排查用（召回波动诊断）：片段库全貌 + 实际注入过的片段 id + 检索主题 + 最终系统提示词"""
+        rows = self.vec_store.fetch_fragments_since('bench', 0)
+        ops = self.mw._prompt_operations.get('bench')
+        injected = []
+        if ops is not None:
+            injected = [getattr(d, 'metadata', {}).get('id') for d in
+                        getattr(ops.prompt, 'memory_fragments', [])]
+        return {
+            'theme': self.mw.memory_spliter.dialogue_theme_by_user.get('bench', ''),
+            'fragments': [{'id': fid, 'theme': (meta or {}).get('theme', '')} for _, meta, fid in rows],
+            'injected_ids': injected,
+            'system_prompt': self.state.get('system_prompt', ''),
+        }
+
     async def turn(self, text: str):
-        self.state['messages'].append(HumanMessage(text, additional_kwargs={'time': time.time()}))
+        _tick()
+        self.state['messages'].append(HumanMessage(text, additional_kwargs={'time': _now()}))
         await self.mw.abefore_model(self.state, self._runtime)
         await self._refresh_user_profile()
         request = ModelRequest(
@@ -338,6 +483,7 @@ class BMDMRunner(ConvRunner):
         result = await self.mw.awrap_model_call(request, self._bmdm_handler)
         if getattr(result, 'command', None) is not None:
             self.state.update(result.command.update)
+            self.events += 1   # 一次检索注入 = 一次记忆事件
         await self.mw.aafter_model(self.state, self._runtime)
 
 
@@ -369,14 +515,28 @@ async def _run_configs(turns: list[str], values: list[str], tmp_dir: pathlib.Pat
         for text in turns:
             await runner.turn(text)
         hits = runner.ask_questions(values)
-        out[name] = {
-            'recall': sum(hits),
-            'hits': [bool(h) for h in hits],
-            'input_tokens': sum(u['hit'] + u['miss'] for u in handler.usages),
-            'output_tokens': sum(u['out'] for u in handler.usages),
-            'llm_calls': len(handler.usages),
-        }
-        print(f"    {name:<10} 召回 {sum(hits)}/{len(values)} {hits}")
+        out[name] = summarize_usage(runner, handler, hits, len(turns))
+        m = out[name]
+        print(f"    {name:<10} 召回 {sum(hits)}/{len(values)} {hits} | "
+              f"调用 {m['llm_calls']}（内部 {m['internal_calls']}）事件 {m['events']} | "
+              f"每次事件内部调用 {m['internal_per_event']}")
+        if name in ('bmdm', 'summarize'):
+            payload = runner.memory_payload()
+            out[name]['memory_payload'] = payload
+            if name == 'bmdm':
+                print(f"      [记忆体积] 注入片段 {payload['injected_tokens']} tok"
+                      f"（{payload['injected_chars']} 字符）· 画像 {payload['profile_tokens']} tok")
+            else:
+                print(f"      [记忆体积] 摘要正文 末次 {payload['summary_tokens_last']} tok · "
+                      f"累计 {payload['summary_tokens_total']} tok（{len(payload['summary_texts'])} 次）")
+                for t in payload['summary_texts'][-1:]:
+                    print(f"      [摘要正文] {t[:300]!r}")
+        if name == 'bmdm':
+            d = runner.diagnostics()
+            print(f"      [诊断] 检索主题={d['theme']!r}")
+            print(f"      [诊断] 片段库={d['fragments']}")
+            print(f"      [诊断] 注入过的片段 id={d['injected_ids']}")
+            print(f"      [诊断] 最终系统提示词=\n{d['system_prompt']}")
     return out
 
 
@@ -457,14 +617,10 @@ async def run_cross_session(length: int, sample: int, embeddings) -> dict:
                   f"片段数={len(rows)} 检索状态={runner.mw._user_retrieve_state!r}")
             print(f"  [会话2结束] BMDM 最后提示词: {runner.state['system_prompt'][:300]!r}")
         hits = runner.ask_questions(values)
-        out[name] = {
-            'recall': sum(hits),
-            'hits': [bool(h) for h in hits],
-            'input_tokens': sum(u['hit'] + u['miss'] for u in handler.usages),
-            'output_tokens': sum(u['out'] for u in handler.usages),
-            'llm_calls': len(handler.usages),
-        }
-        print(f"  [跨会话 length={length} sample={sample}] {name:<10} 召回 {sum(hits)}/4 {hits}")
+        out[name] = summarize_usage(runner, handler, hits, len(turns2))
+        m = out[name]
+        print(f"  [跨会话 length={length} sample={sample}] {name:<10} 召回 {sum(hits)}/4 {hits} | "
+              f"调用 {m['llm_calls']}（内部 {m['internal_calls']}）事件 {m['events']}")
     return out
 
 
@@ -491,9 +647,34 @@ def _parse_kinds(results: dict) -> dict[str, set[int]]:
     return kinds
 
 
+def _key_matches(k: str, prefix: str, length: int, tag: str) -> bool:
+    """结果键形如 {prefix}{length}-{sample}{tag}。
+
+    tag='' 只匹配**无后缀**的原始跑分（避免把不同门控口径平均进同一条折线）；
+    给定 tag 时只匹配该口径（如 tag='-fair3' 匹配 d-24-0-fair3）。
+    """
+    head = f'{prefix}{length}-'
+    if not k.startswith(head):
+        return False
+    rest = k[len(head):]
+    return rest.endswith(tag) if tag else '-' not in rest
+
+
+def load_results() -> dict:
+    """读取已保存的全部跑分（出图用：出图必须看全量，不能只看本次运行的 key）"""
+    path = OUT_DIR / 'recall_results.json'
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
 def make_chart_for(results: dict, kind: str = '', questions: int = 4,
-                   out_name: str = 'recall_benchmark.png'):
-    """通用出图：折线（常规/细节）或分组柱状（跨会话）。配色为 dataviz 验证过的 1-3 号槽位。"""
+                   out_name: str = 'recall_benchmark.png', tag: str = ''):
+    """通用出图：折线（常规/细节）或分组柱状（跨会话）。配色为 dataviz 验证过的 1-3 号槽位。
+
+    tag 指定口径后缀（''=无后缀的原始跑分；'-gated'/'-fair3' 等=该口径），
+    **不同口径绝不混进同一条折线**。
+    """
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -505,12 +686,23 @@ def make_chart_for(results: dict, kind: str = '', questions: int = 4,
     configs = ['bmdm', 'summarize', 'baseline']
     labels = {'bmdm': 'BMDM (ours)', 'summarize': 'SummarizationMiddleware', 'baseline': 'No-memory baseline'}
     colors = {'bmdm': '#2a78d6', 'summarize': '#eb6834', 'baseline': '#1baf7a'}
+    # 同一长度上三条线可能取同值（如 24 轮 BMDM 与官方都是 75%）：不同点型 + 主序列点更大，
+    # 避免被后画的线完全盖住
+    markers = {'bmdm': 'o', 'summarize': 's', 'baseline': '^'}
+    marker_sizes = {'bmdm': 12, 'summarize': 7, 'baseline': 9}
     INK_SECONDARY = '#52514e'  # 文字用墨色，不用系列色（dataviz 规范）
 
     def recall_for(cfg, length):
         runs = [v[cfg] for k, v in results.items()
-                if k.startswith(f'{prefix}{length}-') and cfg in v]
+                if _key_matches(k, prefix, length, tag) and cfg in v]
+        if not runs:
+            return None
         return sum(r['recall'] for r in runs) / (questions * len(runs)) * 100
+
+    # 该 tag 下一份数据都没有 → 不覆盖已有图（否则会用空图盖掉别的口径出的图）
+    if not any(recall_for(cfg, l) is not None for cfg in configs for l in lengths):
+        print(f'（跳过 {out_name}：tag={tag!r} 下无数据）')
+        return
 
     fig, ax = plt.subplots(figsize=(7, 4.6))
     if kind == 'xs':
@@ -518,6 +710,9 @@ def make_chart_for(results: dict, kind: str = '', questions: int = 4,
         width = 0.26
         for i, cfg in enumerate(configs):
             vals = [recall_for(cfg, length) for length in lengths]
+            if all(v is None for v in vals):
+                continue
+            vals = [v or 0 for v in vals]
             xs = [x + (i - 1) * width for x in range(len(lengths))]
             bars = ax.bar(xs, vals, width=width, label=labels[cfg], color=colors[cfg])
             for bar, v in zip(bars, vals):
@@ -531,20 +726,23 @@ def make_chart_for(results: dict, kind: str = '', questions: int = 4,
                      'questions in a brand-new session')
     else:
         for cfg in configs:
-            ys = [recall_for(cfg, length) for length in lengths]
-            ax.plot(lengths, ys, marker='o', markersize=8, linewidth=2,
+            pts = [(l, recall_for(cfg, l)) for l in lengths]
+            pts = [(l, v) for l, v in pts if v is not None]
+            if not pts:
+                continue
+            xs_, ys = zip(*pts)
+            ax.plot(xs_, ys, marker=markers[cfg], markersize=marker_sizes[cfg], linewidth=2,
                     label=labels[cfg], color=colors[cfg])
             # 选择性直接标注：只标主序列（bmdm）与基线（baseline）的端点
             if cfg in ('bmdm', 'baseline'):
-                ax.annotate(f'{ys[-1]:.0f}%', (lengths[-1], ys[-1]),
+                ax.annotate(f'{ys[-1]:.0f}%', (xs_[-1], ys[-1]),
                             textcoords='offset points', xytext=(0, 9),
                             ha='center', fontsize=9, color=INK_SECONDARY)
         ax.set_xlabel('Conversation length (turns)')
         ax.set_ylabel(f'Fact recall rate ({questions} facts) (%)')
         if kind == 'd':
             ax.set_title('Detail retention: BMDM vs baselines\n'
-                         '(8 low-salience facts: numbers, names, tails — '
-                         'the details summaries tend to drop)')
+                         '(8 low-salience facts · matched trigger budget · 3 samples)')
         else:
             ax.set_title('Long-term memory recall: BMDM vs baselines\n'
                          '(needle-in-haystack, 4 facts, context budget = 8 messages)')
@@ -561,8 +759,8 @@ def make_chart_for(results: dict, kind: str = '', questions: int = 4,
     print(f'图表已保存：{out}')
 
 
-def make_all_charts(results: dict):
-    """为结果中存在的评测类型出图"""
+def make_all_charts(results: dict, tag: str = ''):
+    """为结果中存在的评测类型出图（只画指定口径 tag 的那一档）"""
     specs = {
         '': dict(questions=4, out_name='recall_benchmark.png'),
         'xs': dict(questions=4, out_name='cross_session_recall.png'),
@@ -571,7 +769,7 @@ def make_all_charts(results: dict):
     for kind in _parse_kinds(results):
         spec = specs.get(kind)
         if spec:
-            make_chart_for(results, kind=kind, **spec)
+            make_chart_for(results, kind=kind, tag=tag, **spec)
 
 
 async def main():
@@ -584,30 +782,94 @@ async def main():
                         help='跨会话评测：会话1 埋事实，会话2 新线程提问')
     parser.add_argument('--details', action='store_true',
                         help='细节保留评测：8 条低显著度细节（订单号/卡尾号等）')
+    parser.add_argument('--virtual-turn-seconds', type=float, default=0.0,
+                        help='虚拟时钟：每轮推进的虚拟秒数（0 = 真实时间）。'
+                             '用生产门控（τ_m 分钟量级）测时必须开启，否则门要么永不成熟、要么一开每轮跑')
+    parser.add_argument('--production-gates', action='store_true',
+                        help='BMDM 生产门控预设：slice=0.7 / long_term=0.9 / tau_m=600 / tau=43200')
+    parser.add_argument('--slice-value', type=float, default=None, help='BMDM 切片成熟度门')
+    parser.add_argument('--long-term-value', type=float, default=None, help='BMDM 归纳门')
+    parser.add_argument('--trigger-threshold', type=int, default=None, help='BMDM 主触发窗口预算（条消息）')
+    parser.add_argument('--tau-m', type=float, default=None, help='BMDM 成熟度时间尺度（秒）')
+    parser.add_argument('--tau', type=float, default=None, help='BMDM 时间衰减尺度（秒）')
+    parser.add_argument('--top-k', type=int, default=None, help='BMDM 注入片段数（默认 3）')
+    parser.add_argument('--retrieve-k', type=int, default=None, help='BMDM 检索候选数（默认 6）')
+    parser.add_argument('--max-per-theme', type=int, default=None,
+                        help='BMDM 注入集合里单主题上限（默认不限；防同主题占满名额）')
+    parser.add_argument('--always-inject-types', default=None,
+                        help='BMDM 保底类型（逗号分隔，如 identity,preference）：这些类型的片段优先占席')
+    parser.add_argument('--summarize-trigger', type=int, default=None,
+                        help='官方摘要的窗口预算（条消息）。与 --trigger-threshold 取同值即为同阈值对照')
+    parser.add_argument('--summarize-keep', type=int, default=None, help='官方摘要保留的最近消息条数')
+    parser.add_argument('--summarize-max-tokens', type=int, default=None,
+                        help='官方摘要输出上限（默认不限；早期版本误用聊天模型的 100）')
+    parser.add_argument('--tag', default='', help='结果 key 后缀（区分不同门控口径，避免互相覆盖）')
+    parser.add_argument('--fresh', action='store_true',
+                        help='跑之前清空 benchmarks/output/tmp：片段 id 计数器在内存 KV 里、向量库是持久的，'
+                             '复用旧库会让 id 从 1 重算并撞 UNIQUE 约束（生产中 Redis 计数丢失同理）')
     args = parser.parse_args()
 
     if args.chart_only:
-        chart_only()
+        chart_only(args.tag)
         return
 
     if not os.environ.get('DEEPSEEK_API_KEY'):
         raise SystemExit('[错误] 需要 DEEPSEEK_API_KEY（主项目 .env）')
 
+    if args.virtual_turn_seconds > 0:
+        install_virtual_clock(args.virtual_turn_seconds)
+        print(f'[虚拟时钟] 每轮推进 {args.virtual_turn_seconds:.0f} 秒'
+              f'（消息打点 / 成熟度 M(Δt) / 时间衰减 T(m) 均走虚拟时间）')
+
+    gates: dict = {}
+    if args.production_gates:
+        gates.update(slice_value=0.7, long_term_value=0.9, tau_m=600.0, tau=43200.0)
+    for name, value in (('slice_value', args.slice_value),
+                        ('long_term_value', args.long_term_value),
+                        ('trigger_threshold', args.trigger_threshold),
+                        ('tau_m', args.tau_m), ('tau', args.tau),
+                        ('top_k', args.top_k), ('retrieve_k', args.retrieve_k),
+                        ('top_k_max_per_theme', args.max_per_theme)):
+        if value is not None:
+            gates[name] = value
+    if args.always_inject_types:
+        gates['always_inject_types'] = tuple(
+            t.strip() for t in args.always_inject_types.split(',') if t.strip())
+    if gates:
+        BMDM_OVERRIDES.update(gates)
+        print(f'[BMDM 门控] {gates}')
+
+    summarize: dict = {}
+    for name, value in (('trigger', args.summarize_trigger),
+                        ('keep', args.summarize_keep),
+                        ('max_tokens', args.summarize_max_tokens)):
+        if value is not None:
+            summarize[name] = value
+    if summarize:
+        SUMMARIZE_OVERRIDES.update(summarize)
+        print(f'[官方摘要] {summarize}（与 --trigger-threshold 同值即为同阈值对照）')
+
     embeddings = make_embeddings(args.embeddings)
+    if args.fresh:
+        import shutil
+        tmp_root = OUT_DIR / 'tmp'
+        if tmp_root.exists():
+            shutil.rmtree(tmp_root)
+        print('[fresh] 已清空 benchmarks/output/tmp（各配置从空库起跑）')
     lengths = [int(x) for x in args.lengths.split(',')]
     results = {}
     for length in lengths:
         for sample in range(args.samples):
             if args.cross_session:
-                key = f'xs-{length}-{sample}'
+                key = f'xs-{length}-{sample}' + args.tag
                 print(f'===== 跨会话：会话1 长度={length}，样本={sample} =====')
                 results[key] = await run_cross_session(length, sample, embeddings)
             elif args.details:
-                key = f'd-{length}-{sample}'
+                key = f'd-{length}-{sample}' + args.tag
                 print(f'===== 细节保留：长度={length}，样本={sample} =====')
                 results[key] = await run_detail_bench(length, sample, embeddings)
             else:
-                key = f'{length}-{sample}'
+                key = f'{length}-{sample}' + args.tag
                 print(f'===== 会话长度={length}，样本={sample} =====')
                 results[key] = await run_one(length, sample, embeddings)
             save_results(results)  # 增量保存：中断后可 --chart-only 或续跑
@@ -617,15 +879,15 @@ async def main():
         print(f"  {key}: " + ", ".join(
             f"{cfg}: {v['recall']}/{len(v['hits'])} ({v['input_tokens']} in, {v['llm_calls']} calls)"
             for cfg, v in value.items()))
-    make_all_charts(results)
+    # 出图看全量（含历史口径），但只画本次 tag 那一档——不同口径绝不混进同一条折线
+    make_all_charts(load_results(), tag=args.tag)
 
 
-def chart_only():
-    path = OUT_DIR / 'recall_results.json'
-    if not path.exists():
-        raise SystemExit(f'无结果文件：{path}，请先运行基准')
-    results = json.loads(path.read_text(encoding='utf-8'))
-    make_all_charts(results)
+def chart_only(tag: str = ''):
+    results = load_results()
+    if not results:
+        raise SystemExit(f'无结果文件：{OUT_DIR / "recall_results.json"}，请先运行基准')
+    make_all_charts(results, tag=tag)
 
 
 if __name__ == '__main__':

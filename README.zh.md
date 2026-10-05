@@ -2,13 +2,15 @@
 
 一个 **LangGraph `AgentMiddleware`**，基于艾宾浩斯遗忘曲线、多维加权评分、LLM 动态调参与增量画像归纳，为 LLM Agent 提供长期记忆。
 
-> 从生产项目 [fireflymall-ai-customer-service](https://github.com/fufuxiaokeai/fireflymall-ai-customer-service)（LangGraph + DeepSeek 智能客服）解耦提炼的独立版本。**开箱即离线**——测试与演示零外部服务；Redis / RabbitMQ / 真实嵌入均为可选插件。
+> 从生产项目 [fireflymall-ai-customer-service](https://github.com/lijia-ming/fireflymall-ai-customer-service)
+> （LangGraph + DeepSeek 智能客服）解耦提炼的独立版本。**开箱即离线**——测试与演示零外部服务；Redis / RabbitMQ / 真实嵌入均为可选插件。
 
 ---
 
 ## 为什么需要它
 
-普通对话上下文会遗忘。官方 `SummarizationMiddleware` 把旧轮次压成摘要——有用，但丢失了可检索的细节，也构建不了"用户模型"。本中间件实现**三层记忆**，参照人类记忆的工作方式：
+普通对话上下文会遗忘。官方 `SummarizationMiddleware` 把旧轮次压成摘要——有用，但丢失了可检索的细节，也构建不了"用户模型"
+。本中间件实现**三层记忆**，参照人类记忆的工作方式：
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -30,17 +32,18 @@
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-当上下文接近预算时，中间件检索最相关的片段**注入系统提示词**（核心 → 画像 → 片段，按 K-V 缓存前缀友好顺序排列），并截断原始历史——上下文保持有界，而关键事实留存。
+当上下文接近预算时，中间件检索最相关的片段**注入系统提示词**（核心 → 画像 → 片段，按 K-V
+缓存前缀友好顺序排列），并截断原始历史——上下文保持有界，而关键事实留存。
 
 ## 核心公式
 
-| 量 | 公式 | 含义 |
-|---|---|---|
-| 成熟度 | `M(Δt) = 1 − exp(−(Δt/τ_m)^c_m)` | 最早消息"熟透"→ 触发切片 |
-| 时间衰减 | `T(m) = exp(−(Δt/τ)^c)` | 艾宾浩斯遗忘曲线；τ ≈ 衰减到 37% 的时间 |
-| 固有重要性 | `F(m) = clamp(w₀ + w₁·Σ(vᵢ·I_type(i)) + w₂·(1−exp(−refresh·k)), 0, 1)` | 类型先天重要性 + 巩固次数 |
-| 语义相关 | `R(m, q) = max(0, cos(m, q) − θ_min)` | 与当前主题的语义契合度 |
-| 综合得分 | `S(m) = α·R + β·T + γ·F + δ` | top-K 注入的排序依据 |
+| 量     | 公式                                                                     | 含义                       |
+|-------|------------------------------------------------------------------------|--------------------------|
+| 成熟度   | `M(Δt) = 1 − exp(−(Δt/τ_m)^c_m)`                                       | 最早消息"熟透"→ 触发切片           |
+| 时间衰减  | `T(m) = exp(−(Δt/τ)^c)`                                                | 艾宾浩斯遗忘曲线；τ ≈ 衰减到 37% 的时间 |
+| 固有重要性 | `F(m) = clamp(w₀ + w₁·Σ(vᵢ·I_type(i)) + w₂·(1−exp(−refresh·k)), 0, 1)` | 类型先天重要性 + 巩固次数           |
+| 语义相关  | `R(m, q) = max(0, cos(m, q) − θ_min)`                                  | 与当前主题的语义契合度              |
+| 综合得分  | `S(m) = α·R + β·T + γ·F + δ`                                           | top-K 注入的排序依据            |
 
 α/β/γ/δ 与 w₀/w₁/w₂ 由 **LLM 按当前对话主题动态调参**（结构化输出，α+β+γ=1、w₀+w₁+w₂=1），权重随用户讨论内容自适应。
 
@@ -49,10 +52,10 @@
 ```bash
 pip install memory-middleware           # 从 PyPI 安装
 # 或源码安装：
-git clone https://github.com/fufuxiaokeai/memory-middleware.git && cd memory-middleware
+git clone https://github.com/lijia-ming/memory-middleware.git && cd memory-middleware
 pip install -e ".[dev]"
 python examples/quickstart_offline.py   # 完全离线，脚本化假模型
-pytest                                  # 79 个离线测试，零服务，<1s
+pytest                                  # 100 个离线测试，零服务，<1s
 ```
 
 接入真实模型（DeepSeek）：
@@ -64,11 +67,12 @@ memory = BalancedMultiDimensionMemory(MemoryConfig.from_vocation('customer servi
 
 agent = create_agent(
     model, tools,
-    middleware=[memory],                 # 与 SummarizationMiddleware 同一插槽
+    middleware=[memory],  # 与 SummarizationMiddleware 同一插槽
 )
 ```
 
-运行时要求：`runtime.context.user_id`（或 `state['user_id']`）、`runtime.store`（任意 LangGraph store，如 `InMemoryStore`）、state 通道 `messages` / `new_msg_idx` / `user_profile` / `system_prompt`。
+运行时要求：`runtime.context.user_id`（或 `state['user_id']`）、`runtime.store`（任意 LangGraph store，如 `InMemoryStore`
+）、state 通道 `messages` / `new_msg_idx` / `user_profile` / `system_prompt`。
 
 **消息时间戳自包含**：任何缺失 `time` 字段的消息会在首次见到时自动补点（视为"当前时间"），
 艾宾浩斯成熟度/衰减机制无需任何外部打点钩子即可工作；已有时间戳**永远不会被覆盖**——
@@ -82,17 +86,18 @@ agent = create_agent(
 
 一切外部依赖都是**可注入的窄协议 + 离线默认实现**——测试与演示零服务即可运行：
 
-| 关注点 | 协议/注入点 | 离线默认 | 生产插件 |
-|---|---|---|---|
-| 片段序号游标 | `KVStore`（`aget`/`aset`） | `MemoryKVStore`（进程内） | `RedisKVStore`（原子、多进程） |
-| 失败保底 | `ErrorRecovery`（`on_split_error`/`on_summary_error`） | `NullRecovery`（仅记日志） | `RabbitMQRecovery`（持久队列 + 可选告警回调） |
-| 向量嵌入 | langchain `Embeddings` | `HashEmbeddings`（确定性、离线） | DashScope / OpenAI / Ollama |
-| 向量库 | `VectorStore` 接口 | `SQLiteVecStore`（本地文件 / `:memory:`） | Milvus / ES（同一接口） |
-| 四个模型调用 | 模型实例或 `model_factory` | 脚本化假模型 | 任意 `init_chat_model` 提供商（DeepSeek/OpenAI/…） |
-| token 计数 | `TokenCounter` | 字数/3.3 启发式 | tiktoken / transformers / 官方 usage |
-| 主系统提示词 | `MemoryConfig.initial_prompt` | — | 应用自带提示词 |
+| 关注点      | 协议/注入点                                               | 离线默认                                | 生产插件                                        |
+|----------|------------------------------------------------------|-------------------------------------|---------------------------------------------|
+| 片段序号游标   | `KVStore`（`aget`/`aset`/`aincr`）                             | `MemoryKVStore`（进程内）                | `RedisKVStore`（原子、多进程）                      |
+| 失败保底     | `ErrorRecovery`（`on_split_error`/`on_summary_error`） | `NullRecovery`（仅记日志）                | `RabbitMQRecovery`（持久队列 + 可选告警回调）           |
+| 向量嵌入     | langchain `Embeddings`                               | `HashEmbeddings`（确定性、离线）            | DashScope / OpenAI / Ollama                 |
+| 向量库      | `VectorStore` 接口                                     | `SQLiteVecStore`（本地文件 / `:memory:`） | Milvus / ES（同一接口）                           |
+| 四个模型调用   | 模型实例或 `model_factory`                                | 脚本化假模型                              | 任意 `init_chat_model` 提供商（DeepSeek/OpenAI/…） |
+| token 计数 | `TokenCounter`                                       | 字数/3.3 启发式                          | tiktoken / transformers / 官方 usage          |
+| 主系统提示词   | `MemoryConfig.initial_prompt`                        | —                                   | 应用自带提示词                                     |
 
 如实说明的局限（文档明示，不隐藏）：
+
 - `MemoryKVStore` 仅单进程——多进程部署请用 `RedisKVStore`
 - `NullRecovery` 会丢弃失败的切分/总结载荷（该轮跳过，Agent 继续工作）——需要重试请挂 `RabbitMQRecovery`
 - `HashEmbeddings` 语义质量低——生产召回请换真实嵌入模型
@@ -100,13 +105,16 @@ agent = create_agent(
 ## 测试策略
 
 **离线套件（默认 `pytest`，无需 API key）：**
-- Layer 0 —— 纯数学：艾宾浩斯公式、clamp/参数约束、画像合并、scope 解析、提示词排序
+
+- Layer 0 —— 纯数学：艾宾浩斯公式、clamp/参数约束、画像合并、片段区间（start_idx/end_idx）解析、提示词排序
 - Layer 1 —— 假 LLM + 内存存储的组件测试：切片流程、增量总结（游标不回头）、检索注入、跨用户隔离、降级路径、并发访问
 - 并发测试还抓到过一个真实 bug（共享 sqlite 连接跨用户竞争）——该 bug 在上游项目中同样存在
 
 **集成套件（`pytest -m integration`，需要 `DEEPSEEK_API_KEY`）：**
+
 - 真实模型端到端：片段落库、画像写入、片段注入、回答提及早期事实
-- 逐调用 token 与费用统计——基于官方 `usage.prompt_cache_hit_tokens / prompt_cache_miss_tokens` 字段，按 DeepSeek 现行价计费（¥0.02 / ¥1 / ¥2 每百万 token，`memory_middleware.cost` 可配置）
+- 逐调用 token 与费用统计——基于官方 `usage.prompt_cache_hit_tokens / prompt_cache_miss_tokens` 字段，按 DeepSeek
+  现行价计费（¥0.02 / ¥1 / ¥2 每百万 token，`memory_middleware.cost` 可配置）
 
 ## 实测数据
 
@@ -114,18 +122,18 @@ agent = create_agent(
 `usage.prompt_cache_hit_tokens / prompt_cache_miss_tokens`
 （命中 ¥0.02/M、未命中 ¥1/M、输出 ¥2/M，`memory_middleware/cost.py` 可配置）。
 
-**离线套件** —— 79 个测试，约 1 秒，零服务、零 API key。
+**离线套件** —— 100 个测试，约 1 秒，零服务、零 API key。
 
 **真实 DeepSeek 端到端（deepseek-v4-flash，4 轮对话）**
 （集成测试 `tests/integration/test_cost_tracking.py`，2026-08-16 运行）：
 
-| 指标 | 数值 |
-|---|---|
+| 指标       | 数值                                                                       |
+|----------|--------------------------------------------------------------------------|
 | LLM 调用次数 | 13 —— 其中 **4 次为主 Agent 对话调用**（对话主循环），**9 次为中间件内部调用**（主题切分 / 增量总结 / 参数调优） |
-| 输入 token | 8,276 |
-| 输出 token | 1,009 |
-| 平均缓存命中率 | 62.1%（中间件内部切分/总结调用：86–93%） |
-| 总费用 | ¥0.0033 |
+| 输入 token | 8,276                                                                    |
+| 输出 token | 1,009                                                                    |
+| 平均缓存命中率  | 62.1%（中间件内部切分/总结调用：86–93%）                                               |
+| 总费用      | ¥0.0033                                                                  |
 
 逐调用账目来自官方 `usage` 字段，按 ¥0.02 / ¥1 / ¥2 每百万 token 计价
 （`memory_middleware/cost.py`）。主 Agent 与中间件内部调用在同一采集会话中，
@@ -141,16 +149,39 @@ agent = create_agent(
 三种配置共用完全相同的对话文本；上下文预算 = 8 条消息；真实 DeepSeek + DashScope 嵌入）。
 召回判定 = 回答包含事实关键词。
 
-| 会话长度 | 无记忆基线 | SummarizationMiddleware | BMDM |
-|---|---|---|---|
-| 8 轮 | 0/4 | 3/4 | 3/4 |
-| 16 轮 | 0/4 | 3/4 | 2/4 |
-| 24 轮 | 0/4 | 3/4 | 3/4 |
+两种口径分开报（2026-10-05 修复"切分随事件发生"后重测）：
+
+- **生产口径**：门控按设计值（`slice=0.7` / `long_term=0.9` / `τ_m=600`）+ 虚拟时钟（每轮 35 秒）
+  + 窗口预算 50 条 —— 中间件在真实会话节奏下的行为
+- **门控不阻塞口径**：成熟度门设成 0.0、窗口预算 8 条，让机制在压缩时间的基准里密集触发 ——
+  用来量"每次事件的单位成本"上限
+
+| 会话长度 | 无记忆基线 | SummarizationMiddleware | BMDM | 口径 |
+|------|-------|-------------------------|------|------|
+| 8 轮  | 0/4   | 3/4                     | 3/4  | 门控不阻塞 |
+| 16 轮 | 0/4   | 3/4                     | 3/4  | 门控不阻塞 |
+| 24 轮 | 0/4   | 3/4                     | 3/4  | 门控不阻塞 |
+| 24 轮 | 0/4   | 3/4                     | 3/4  | **生产口径** |
 
 ![长期记忆召回基准](benchmarks/output/recall_benchmark.png)
 
-24 轮时的输入成本：基线 3,582 token / 31 次调用 · Summarization 11,809 / 40 ·
-BMDM 66,751 / 99（约为 Summarization 的 3 倍——三遍架构（切分/总结/对话）的代价）。
+24 轮成本（输入 token / 调用次数）：
+
+| 口径 | 基线 | Summarization | BMDM | BMDM/Summarization |
+|---|---|---|---|---|
+| 门控不阻塞 | 3,796 / 31 | 12,089 / 40 | 28,768 / 52 | 2.38× 输入 · 1.30× 调用 |
+| 生产口径（两边窗口预算不等¹） | 3,880 / 31 | 12,029 / 40 | 13,223 / 33 | 1.10× 输入 · 0.83× 调用¹ |
+| **生产口径 · 同阈值对照**（两边都 50 条） | 3,718 / 31 | 14,088 / 32 | 14,733 / 33 | **1.05× 输入 · 1.03× 调用** |
+
+¹ 该跑两边窗口预算不等（BMDM 50 条 vs 官方 10 条），官方的触发频率被抬高约 9 倍，"调用更少"是阈值假象。
+**同阈值对照才是可比口径**：两边都只触发 1 次事件，每次事件 BMDM 2 次内部调用（切分 + 调参）vs 官方 1 次，
+总量基本相等，召回持平。
+
+> **历史数字更正**：早期版本报过"24 轮 BMDM 66,751 token / 99 次调用 ≈ 官方的 3~5.6 倍"。
+> 那个数字叠了两处失真：① 成熟度门被设成 `0.0`（等于拆掉）；② 切分当时**独立于主触发事件**执行，
+> 窗口不复位时就每轮调一次切分模型（实测占内部调用的一半以上）。修复后切分并入事件
+> （一次事件 = 切分 + 调参 + 片段成熟时的归纳），生产口径下成本与官方基本持平。
+> 高显著度事实召回本来也是摘要的主场——BMDM 的差异化在下面的细节保留与跨会话两节。
 
 ### 跨会话召回（会话内基准看不到的维度）
 
@@ -158,15 +189,19 @@ SummarizationMiddleware 的摘要活在会话 state 里——**全新线程从�
 BMDM 把画像与片段持久化在 store。会话 1 陈述事实，会话 2（新线程，
 暖场闲聊 + 同样的 4 条提问）提问：
 
-| 会话1 长度 | 无记忆基线 | SummarizationMiddleware | BMDM |
-|---|---|---|---|
-| 8 轮 | 0/4 | 0/4 | **3/4** |
-| 16 轮 | 0/4 | 0/4 | **3/4** |
-| 24 轮 | 0/4 | 0/4 | **3/4** |
+| 会话1 长度 | 无记忆基线 | SummarizationMiddleware | BMDM    |
+|--------|-------|-------------------------|---------|
+| 8 轮    | 0/4   | 0/4                     | **3/4** |
+| 16 轮   | 0/4   | 0/4                     | **3/4** |
+| 24 轮   | 0/4   | 0/4                     | **3/4** |
 
 ![跨会话召回基准](benchmarks/output/cross_session_recall.png)
 
+2026-10-05 修复后复测（16/24 轮）：BMDM 仍是 **3/4**，总调用降到 **11 次**（内部 3 次：切分 + 调参 + 归纳，
+修复前为 17 次）；两种基线依旧 0/4。
+
 如实解读：
+
 - 没有跨会话机制，新会话**什么都记不住**——两种基线在所有长度下都是 0/4，符合设计。
 - BMDM 在新会话中召回 3/4（姓名/职业/爱好经持久化画像；"周三下午要开会"虽已入画像
   但未在回答中浮现——与会话内看到的约束细节缺口一致）。
@@ -180,26 +215,47 @@ BMDM 把画像与片段持久化在 store。会话 1 陈述事实，会话 2（�
 8 条低显著度细节（猫名/订单号/卡尾号/生日/机型/空闲时段/爱吃的/住址）在对话开头陈述，
 末尾逐条提问：
 
-| 会话长度 | 无记忆基线 | SummarizationMiddleware | BMDM |
-|---|---|---|---|
-| 8 轮 | 0/8 | 2/8 | **4/8** |
-| 16 轮 | 0/8 | 2/8 | **5/8** |
-| 24 轮 | 0/8 | 1/8 | **4/8** |
+| 会话长度 | 口径 | 无记忆基线 | SummarizationMiddleware | BMDM |
+|------|------|-------|-------------------------|---------|
+| 24 轮 | 生产 · 同阈值 50 条 · 3 样本（**旧默认**：预筛 k=6 + 无保底） | 0.33/8 | 7.33/8（8·7·7） | 6.67/8（4·8·8，σ≈1.9） |
+| 24 轮 | 同上 · **新默认**（不预筛 + identity/preference 保底，top_k=3） | 0.33/8 | 7.67/8（7·8·8） | **7.67/8（7·8·8，σ≈0.5）** |
+| 24 轮 | 同上 · 新默认 + `top_k=4` | 0.33/8 | 7.67/8（8·8·7） | **8.0/8（8·8·8，零方差）** |
+
+**记忆正文体积**（同一口径"字数/3.3"，只算正文）：
+
+| 配置 | 注入/摘要正文 | 对比官方 |
+|---|---|---|
+| 官方摘要 | 221·265·280 → **255 tok** | — |
+| **新默认**（不预筛 + 保底，top_k=3） | 91·104·166 → **120 tok** | **0.47×** |
+| 新默认 + top_k=4 | 223·251·217 → **230 tok** | 0.90× |
+
+即**默认配置下注入正文只有官方摘要的一半，召回持平**——片段是结构化抽取，不是"大白话复述"。
+
+为什么默认选片会抖（4·8·8 / 8·8·6 之间跳）：细节集中在少数片段里，而"注入哪些片段"是竞争制，
+**预筛（`retrieve_k=6` 按主题相似度取候选）与名额（`top_k=3`）两道闸门任意一道把载着细节的片段挤掉，
+那一整块细节就全没了**——切分粒度每次不同，被挤掉与否跟着变。诊断实证：某样本片段库 8 个，
+主题"宠物与订单退款信息"把「个人基本信息」「个人偏好与居住地」挡在候选之外 → 3/8。
+修法：`retrieve_k` 放大到覆盖全库（本地向量检索，零 LLM 成本）+ `always_inject_types=('identity','preference')`
+让高价值类型优先占席（与公式自己的 `TYPE_SCORE_MAP` 0.95/0.80 一致）。
 
 ![细节保留基准](benchmarks/output/detail_retention.png)
 
 如实解读：
-- 摘要对细节的召回**随长度退化**（2→2→1）：对话越长，压缩丢掉的低显著度细节越多。
-- BMDM 稳定在 4~5/8：片段**原文存储**、持续可检索，差距随对话长度拉大。
-- 两种机制都丢纯数字类细节（订单号/卡尾号/生日/空闲时段）：摘要直接压缩掉，
-  BMDM 的主题门控检索也不稳定（真实边界，不隐藏）。
-- 24 轮时成本：基线 5,492 token/40 次 · Summarization 15,842/52 · BMDM 90,270/128——
-  此规模下细节保留约为 Summarization 的 6 倍成本。
+
+- **同口径、无手脚下，两边在细节维度基本打平**：官方 7.33/8、BMDM 6.67/8（3 样本）。
+  BMDM 波动更大——有一个样本掉到 4/8（主题门控检索没命中那批细节），官方稳定在 7~8/8。
+- 成本：BMDM 输入均值 20,728 vs 官方 29,414 → **0.70×**（官方那一次摘要要一次性吞下约 46 条消息）；
+  调用 42 vs 41 → 1.02×。**是"同样召回下输入少 30%"，不是"同样成本下召回更高"。**
+- 归一化口径仍成立：BMDM 每次事件 2 次结构化调用（切分 + 调参；归纳未到成熟线），官方 1 次。
+- ⚠️ **更正**：早期版本报过"BMDM 7~8/8 vs 官方 0~2/8、约 6 倍成本"，那是**两处对官方的手脚**造成的假象——
+  ① 官方摘要误用了聊天模型（`max_tokens=100`，摘要被截断，内容越长截得越狠）；② 两边触发预算不等
+  （BMDM 50 条 vs 官方 10 条）。修掉后官方 24 轮的细节召回从 0/8 升到 7~8/8，旧数字已作废。
 
 如实解读：
+
 - 严格的 8 条消息预算下，**无记忆基线全部遗忘**——第 1 轮的事实直接消失。
-- 两种记忆机制都保住 ~75% 召回；16 轮时 BMDM 掉到 50%（一个事实在检索波动中丢失——
-  此规模下单样本的噪声）。
+- 两种记忆机制在 8/16/24 轮都保住 **3/4**（BMDM 与官方持平）。注意召回单样本有 ±2 的抖动
+  （同配置重跑，官方自己出现过 1/4 → 3/4），要看趋势请加 `--samples 3`。
 - 两个机制丢的是**同一个**事实（"每周三下午要开会"这类约束细节）：摘要会丢掉这类
   细节，画像的约束字段也不稳定。
 - BMDM 的差异化价值在短程图表之外：**按用户的结构化画像 + 可主题检索的片段**
@@ -209,15 +265,17 @@ BMDM 把画像与片段持久化在 store。会话 1 陈述事实，会话 2（�
 
 ### 为什么中间件调用不带对话历史（实测）
 
-这是一个看似反直觉的设计决策——携带历史会**提高**缓存命中率，却**提高**账单。实测于 deepseek-v4-flash，8 组 × 6 次调用，输入成本比值（B = 携带"忽略"历史前缀，A = 无状态基线）：
+这是一个看似反直觉的设计决策——携带历史会**提高**缓存命中率，却**提高**账单。实测于 deepseek-v4-flash，8 组 × 6
+次调用，输入成本比值（B = 携带"忽略"历史前缀，A = 无状态基线）：
 
-| 调用类型 | 冷启动（首次写入） | 温热重放（缓存已预热） |
-|---|---|---|
-| 数学调参 | B/A = 1.82× | 0.59× |
-| 片段切分 | B/A = 1.89× | 0.71× |
-| 画像总结 | B/A = 2.30× | **1.90×** |
+| 调用类型 | 冷启动（首次写入）   | 温热重放（缓存已预热） |
+|------|-------------|-------------|
+| 数学调参 | B/A = 1.82× | 0.59×       |
+| 片段切分 | B/A = 1.89× | 0.71×       |
+| 画像总结 | B/A = 2.30× | **1.90×**   |
 
-- **冷启动**（生产常态：对话内容不会字节级重复——中间件处理的是互不重叠的增量）：历史 token 首次出现按全价计费，之后才享受折扣读。B 恒亏。
+- **冷启动**（生产常态：对话内容不会字节级重复——中间件处理的是互不重叠的增量）：历史 token 首次出现按全价计费，之后才享受折扣读。B
+  恒亏。
 - **温热重放**（TTL 内重复发送相同请求）：历史摊销后 B 在"历史很短"时可能小赢——但生产历史无限增长，2% 的读成本随之增长。
 - **陷阱**：温热运行中 B-summary 命中率达 93.3%（A-summary 仅 0%），成本却仍贵 1.9 倍。**命中率 ≠ 成本。**
 - 实测缓存机制：DeepSeek 按 128-token 单元从开头缓存；末尾一个单元即使输入字节相同也按全价计费。
@@ -228,13 +286,13 @@ BMDM 把画像与片段持久化在 store。会话 1 陈述事实，会话 2（�
 
 `MemoryConfig` 关键字段（完整见 `memory_middleware/config.py`）：
 
-| 字段 | 默认值 | 含义 |
-|---|---|---|
-| `model_name` / `model_kwargs` | `deepseek-v4-flash` | 三个内部调用所用模型 |
-| `vocation` | customer service | τ_m / τ / c / 阈值预设（collaborative creation / customer service / accompany / 自定义） |
-| `pattern` / `trigger_threshold` | fraction / 0.8 | 检索注入的触发方式（上下文预算比例 / token 数 / 消息条数） |
-| `rag_db_path` | `memory_fragments.db` | 本地 sqlite 文件（可用 `:memory:`） |
-| `retrieve_k` / `top_k` | 6 / 3 | 检索候选数 → 注入 top-K |
+| 字段                              | 默认值                   | 含义                                                                              |
+|---------------------------------|-----------------------|---------------------------------------------------------------------------------|
+| `model_name` / `model_kwargs`   | `deepseek-v4-flash`   | 三个内部调用所用模型                                                                      |
+| `vocation`                      | customer service      | τ_m / τ / c / 阈值预设（collaborative creation / customer service / accompany / 自定义） |
+| `pattern` / `trigger_threshold` | fraction / 0.8        | 检索注入的触发方式（上下文预算比例 / token 数 / 消息条数）                                             |
+| `rag_db_path`                   | `memory_fragments.db` | 本地 sqlite 文件（可用 `:memory:`）                                                     |
+| `retrieve_k` / `top_k`          | 6 / 3                 | 检索候选数 → 注入 top-K                                                                |
 
 ## 上游项目
 
@@ -247,12 +305,12 @@ BMDM 把画像与片段持久化在 store。会话 1 陈述事实，会话 2（�
 
 本包是**解耦子集**，不是超集。生产使用前请知晓差异：
 
-| 关注点 | 本包（离线默认） | 上游生产接线 |
-|---|---|---|
-| 失败保底 | `NullRecovery`——失败轮次跳过 | RabbitMQ 持久队列 + 邮件告警（`memory_rag.py`） |
-| 片段游标 | `MemoryKVStore`——仅单进程 | Redis（多进程安全） |
-| 向量嵌入 | `HashEmbeddings`——离线、语义质量低 | DashScope `text-embedding-v4` |
-| token 计数 | 字数/3.3 启发式 | tiktoken / transformers |
+| 关注点      | 本包（离线默认）                   | 上游生产接线                                |
+|----------|----------------------------|---------------------------------------|
+| 失败保底     | `NullRecovery`——失败轮次跳过     | RabbitMQ 持久队列 + 邮件告警（`memory_rag.py`） |
+| 片段游标     | `MemoryKVStore`——仅单进程      | Redis（多进程安全）                          |
+| 向量嵌入     | `HashEmbeddings`——离线、语义质量低 | DashScope `text-embedding-v4`         |
+| token 计数 | 字数/3.3 启发式                 | tiktoken / transformers               |
 
 上游完整实现位于：`Tools/middleware/memory/time_memory.py`
 （BalancedMultiDimensionMemory 全量实现）、`memory_rag.py`（切分/增量总结/RabbitMQ 保底）、

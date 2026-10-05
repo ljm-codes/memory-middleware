@@ -49,10 +49,10 @@ When the context budget is approached, the middleware retrieves the most relevan
 ```bash
 pip install memory-middleware           # from PyPI
 # or from source:
-git clone https://github.com/fufuxiaokeai/memory-middleware.git && cd memory-middleware
+git clone https://github.com/lijia-ming/memory-middleware.git && cd memory-middleware
 pip install -e ".[dev]"
 python examples/quickstart_offline.py   # fully offline, scripted models
-pytest                                  # 79 offline tests, no services, <1s
+pytest                                  # 100 offline tests, no services, <1s
 ```
 
 To use with a real model (DeepSeek):
@@ -87,7 +87,7 @@ Everything external is an **injectable narrow protocol with an offline default**
 
 | Concern | Protocol / injection point | Offline default | Production plug-in |
 |---|---|---|---|
-| Fragment id cursor | `KVStore` (`aget`/`aset`) | `MemoryKVStore` (in-process) | `RedisKVStore` (atomic, multi-process) |
+| Fragment id cursor | `KVStore` (`aget`/`aset`/`aincr`) | `MemoryKVStore` (in-process) | `RedisKVStore` (atomic, multi-process) |
 | Failure recovery | `ErrorRecovery` (`on_split_error` / `on_summary_error`) | `NullRecovery` (log only) | `RabbitMQRecovery` (durable queue + optional notifier) |
 | Embeddings | langchain `Embeddings` | `HashEmbeddings` (deterministic, offline) | DashScope / OpenAI / Ollama |
 | Vector store | `VectorStore` interface | `SQLiteVecStore` (local file / `:memory:`) | Milvus / ES via the same interface |
@@ -103,7 +103,7 @@ Honest limitations (documented, not hidden):
 ## Testing strategy
 
 **Offline suite (default `pytest`, no API keys):**
-- Layer 0 — pure math: Ebbinghaus formulas, clamp/constraints, profile merging, scope parsing, prompt ordering
+- Layer 0 — pure math: Ebbinghaus formulas, clamp/constraints, profile merging, fragment range (start_idx/end_idx) parsing, prompt ordering
 - Layer 1 — component tests with fake LLMs + in-memory stores: slicing flow, incremental summary (cursor never rewinds), retrieval injection, cross-user isolation, degradation paths, concurrent access
 - The concurrency test caught a real bug (shared sqlite connection racing across users) that also existed in the original project
 
@@ -118,7 +118,7 @@ official billing fields `usage.prompt_cache_hit_tokens / prompt_cache_miss_token
 (¥0.02 per 1M for cache-hit input, ¥1.0 for miss, ¥2.0 for output — configurable in
 `memory_middleware/cost.py`).
 
-**Offline suite** — 79 tests, ~1 s, zero services, zero API keys.
+**Offline suite** — 100 tests, ~1 s, zero services, zero API keys.
 
 **End-to-end with real DeepSeek (deepseek-v4-flash), 4-turn conversation**
 (integration test `tests/integration/test_cost_tracking.py`, run 2026-08-16):
@@ -147,17 +147,47 @@ Harness: `benchmarks/three_way_recall.py` (deterministic facts + filler + questi
 same conversation text for all three configs, context budget = 8 messages, real
 DeepSeek + DashScope embeddings). Fact recall = answer contains the fact keyword.
 
-| Conversation length | No-memory baseline | SummarizationMiddleware | BMDM |
-|---|---|---|---|
-| 8 turns | 0/4 | 3/4 | 3/4 |
-| 16 turns | 0/4 | 3/4 | 2/4 |
-| 24 turns | 0/4 | 3/4 | 3/4 |
+Reported under **two regimes** (re-measured 2026-10-05, after fixing "slicing runs
+with the event"):
+
+- **Production regime**: design gate values (`slice=0.7` / `long_term=0.9` / `τ_m=600`)
+  + a virtual clock (35 s per turn) + a 50-message window budget — how the middleware
+  behaves at real conversation pacing.
+- **Gates-open regime**: maturity gate pinned to 0.0 and an 8-message budget, so the
+  machinery fires densely inside a time-compressed harness — used to measure the
+  *per-event unit cost* upper bound.
+
+| Conversation length | No-memory baseline | SummarizationMiddleware | BMDM | Regime |
+|---|---|---|---|---|
+| 8 turns | 0/4 | 3/4 | 3/4 | gates-open |
+| 16 turns | 0/4 | 3/4 | 3/4 | gates-open |
+| 24 turns | 0/4 | 3/4 | 3/4 | gates-open |
+| 24 turns | 0/4 | 3/4 | 3/4 | **production** |
 
 ![Long-term memory recall benchmark](benchmarks/output/recall_benchmark.png)
 
-Input cost at 24 turns: baseline 3,582 tokens / 31 calls · Summarization 11,809 /
-40 · BMDM 66,751 / 99 (~3× Summarization — the price of the three-pass
-slice/summarize/chat architecture).
+Cost at 24 turns (input tokens / calls):
+
+| Regime | baseline | Summarization | BMDM | BMDM/Summarization |
+|---|---|---|---|---|
+| gates-open | 3,796 / 31 | 12,089 / 40 | 28,768 / 52 | 2.38× input · 1.30× calls |
+| production (unequal budgets¹) | 3,880 / 31 | 12,029 / 40 | 13,223 / 33 | 1.10× input · 0.83× calls¹ |
+| **production · matched budgets** (both 50) | 3,718 / 31 | 14,088 / 32 | 14,733 / 33 | **1.05× input · 1.03× calls** |
+
+¹ That run gave the two sides unequal window budgets (BMDM 50 messages vs summarization 10), inflating
+the official trigger frequency ~9×; "fewer calls" was a threshold artifact. **The matched-budget run is
+the comparable one**: both sides fire exactly 1 event, BMDM spends 2 internal calls per event
+(slice + tune) against the official's 1, so totals are essentially equal — with recall on par.
+
+> **Correction of historical numbers**: earlier versions quoted "BMDM 66,751 tokens /
+> 99 calls at 24 turns ≈ 3–5.6× Summarization". That figure stacked two distortions:
+> ① the maturity gate was pinned to `0.0` (i.e. removed), and ② slicing used to run
+> **independently of the primary trigger event**, so whenever the window was not
+> reset it called the splitter model every single turn (measured: over half of all
+> internal calls). With slicing folded into the event (one event = slice + tune +
+> profile induction when fragments are mature), cost at production pacing is on par
+> with summarization. High-salience fact recall is also summarization's home turf —
+> BMDM's differentiation is in the detail-retention and cross-session sections below.
 
 ### Cross-session recall (the dimension the within-session benchmark cannot see)
 
@@ -172,6 +202,9 @@ states facts, session 2 (new thread, warm-up turns + the same 4 questions) asks:
 | 24 turns | 0/4 | 0/4 | **3/4** |
 
 ![Cross-session recall benchmark](benchmarks/output/cross_session_recall.png)
+
+Re-measured after the 2026-10-05 fix (16/24 turns): BMDM still **3/4**, total calls down
+to **11** (3 internal: slice + tune + induction; 17 before the fix); both baselines remain 0/4.
 
 Honest reading:
 - Without a cross-session mechanism, a new session recalls **nothing** — both baselines
@@ -193,28 +226,57 @@ free-time window, favorite food, address) stated early, then queried one by one:
 
 | Conversation length | No-memory baseline | SummarizationMiddleware | BMDM |
 |---|---|---|---|
-| 8 turns | 0/8 | 2/8 | **4/8** |
-| 16 turns | 0/8 | 2/8 | **5/8** |
-| 24 turns | 0/8 | 1/8 | **4/8** |
+| 24 turns | production · matched budgets · 3 samples (**old defaults**: prefilter k=6, no floor) | 0.33/8 | 7.33/8 (8·7·7) | 6.67/8 (4·8·8, σ≈1.9) |
+| 24 turns | same · **new defaults** (no prefilter + identity/preference floor, top_k=3) | 0.33/8 | 7.67/8 (7·8·8) | **7.67/8 (7·8·8, σ≈0.5)** |
+| 24 turns | new defaults + `top_k=4` | 0.33/8 | 7.67/8 (8·8·7) | **8.0/8 (8·8·8, zero variance)** |
+
+**Memory payload volume** (same counter for both sides — chars/3.3, body text only):
+
+| Config | payload | vs official |
+|---|---|---|
+| Summarization summary body | 221·265·280 → **255 tok** | — |
+| **new defaults** (no prefilter + floor, top_k=3) | 91·104·166 → **120 tok** | **0.47×** |
+| new defaults + top_k=4 | 223·251·217 → **230 tok** | 0.90× |
+
+So under the defaults the injected payload is **half the official summary** at equal recall —
+fragments are structured extraction, not prose paraphrase.
+
+Why the default selection wobbles (4·8·8 / 8·8·6): details live concentrated in a few
+fragments, and *which* fragments get injected is a competition — **either gate can drop
+the fragment carrying them (the theme-similarity prefilter `retrieve_k=6`, or the slot
+limit `top_k=3`), and losing it loses the whole block**. Split granularity varies per run,
+so whether it gets dropped varies too. Observed: a store of 8 fragments where the theme
+"pet & order-refund" pushed 「personal basics」and「preferences & address」out of the
+candidate set → 3/8. Fix: widen `retrieve_k` to cover the store (local vector search, no
+LLM cost) + `always_inject_types=('identity','preference')` so high-value types always
+hold a seat (consistent with the formula's own `TYPE_SCORE_MAP` 0.95/0.80).
 
 ![Detail retention benchmark](benchmarks/output/detail_retention.png)
 
 Honest reading:
-- The summary's recall of specifics **declines with length** (2→2→1): compression
-  drops low-salience details as the conversation grows.
-- BMDM holds ~4–5/8: fragments are stored **verbatim** and stay retrievable; the gap
-  widens with conversation length.
-- Both mechanisms miss the pure-number details (order number / card tail / birthday /
-  free-time window): summaries drop them, and BMDM's theme-gated retrieval does not
-  reliably surface them (a real boundary, not hidden).
-- Cost at 24 turns: baseline 5,492 tokens/40 calls · Summarization 15,842/52 · BMDM
-  90,270/128 — detail retention costs ~6× Summarization at this scale.
+- **Under matched budgets and with no handicaps, the two are essentially tied on
+  detail retention**: summarization 7.33/8, BMDM 6.67/8 (3 samples). BMDM is the
+  noisier one — one sample dropped to 4/8 (theme-gated retrieval missed that batch),
+  while summarization stayed at 7–8/8.
+- Cost: BMDM averages 20,728 input tokens vs summarization's 29,414 → **0.70×** (the
+  official's single summary ingests ~46 messages at once); calls 42 vs 41 → 1.02×.
+  So the claim is "**~30% less input for the same recall**", *not* "same cost for
+  higher recall".
+- The normalized unit cost still holds: BMDM spends 2 structured calls per event
+  (slice + tune; induction not yet mature) against the official's 1.
+- ⚠️ **Correction**: earlier versions reported "BMDM 7–8/8 vs summarization 0–2/8 at
+  ~6× the cost". That was an artifact of **two handicaps on the official**: ① its
+  summarizer shared the chat model (`max_tokens=100`, so summaries were truncated —
+  the longer the conversation, the worse); ② the two sides were given unequal trigger
+  budgets (BMDM 50 messages vs the official's 10). With both removed, the official's
+  24-turn detail recall rises from 0/8 to 7–8/8. The old numbers are void.
 
 Honest reading:
 - With a strict 8-message budget, the **no-memory baseline forgets everything** —
   facts stated at turn 1 are simply gone.
-- Both memory mechanisms hold ~75% recall; at 16 turns BMDM dipped to 50% (one fact
-  lost to retrieval variance — single-sample noise at this scale).
+- Both memory mechanisms hold **3/4 at 8/16/24 turns** (BMDM on par with
+  summarization here). Note single-sample recall swings by ±2 — re-running the same
+  config, summarization itself went 1/4 → 3/4 — use `--samples 3` before reading trends.
 - Both mechanisms lose the *same* fact (a "Wednesdays are busy" constraint): summaries
   drop such details, and the profile constraint field is not reliably filled.
 - BMDM's distinguishing value is beyond this short-horizon chart: a **per-user
@@ -271,7 +333,7 @@ Key fields of `MemoryConfig` (see `memory_middleware/config.py` for all):
 ## Upstream project
 
 This package is a decoupled extraction of the memory middleware that powers
-[fireflymall-ai-customer-service](https://github.com/fufuxiaokeai/fireflymall-ai-customer-service)
+[fireflymall-ai-customer-service](https://github.com/lijia-ming/fireflymall-ai-customer-service)
 — a production intelligent customer-service agent (LangGraph + DeepSeek). The upstream
 repo contains the business-coupled version (Redis / RabbitMQ / DashScope wiring) plus
 the reproducible cache-rate benchmark (`bench_cache_rate.py`) whose results are shown above.
