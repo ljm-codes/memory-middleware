@@ -2,7 +2,7 @@
 
 一个 **LangGraph `AgentMiddleware`**，基于艾宾浩斯遗忘曲线、多维加权评分、LLM 动态调参与增量画像归纳，为 LLM Agent 提供长期记忆。
 
-> 从生产项目 [fireflymall-ai-customer-service](https://github.com/lijia-ming/fireflymall-ai-customer-service)
+> 从生产项目 [fireflymall-ai-customer-service](https://github.com/ljm-codes/fireflymall-ai-customer-service)
 > （LangGraph + DeepSeek 智能客服）解耦提炼的独立版本。**开箱即离线**——测试与演示零外部服务；Redis / RabbitMQ / 真实嵌入均为可选插件。
 
 ---
@@ -67,7 +67,7 @@
 ```bash
 pip install memory-middleware           # 从 PyPI 安装
 # 或源码安装：
-git clone https://github.com/lijia-ming/memory-middleware.git && cd memory-middleware
+git clone https://github.com/ljm-codes/memory-middleware.git && cd memory-middleware
 pip install -e ".[dev]"
 python examples/quickstart_offline.py   # 完全离线，脚本化假模型
 pytest                                  # 115 个离线测试，零服务，<1s（另有 3 个集成用例需 -m integration）
@@ -334,7 +334,7 @@ BMDM 把画像与片段持久化在 store。会话 1 陈述事实，会话 2（�
 
 ## 上游项目
 
-本包是从 [fireflymall-ai-customer-service](https://github.com/lijia-ming/fireflymall-ai-customer-service)
+本包是从 [fireflymall-ai-customer-service](https://github.com/ljm-codes/fireflymall-ai-customer-service)
 （生产级智能客服 Agent，LangGraph + DeepSeek）中解耦提炼的记忆中间件。上游仓库保留
 业务耦合版本（Redis / RabbitMQ / DashScope 接线），并含可复现的缓存率基准
 （`tests/bench_cache_rate.py`，原始数据落在 `tests/data/bench_cache_rate_*.json` 与同名 `.log`）——
