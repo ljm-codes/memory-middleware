@@ -4,7 +4,7 @@ A **LangGraph `AgentMiddleware`** that gives LLM agents long-term memory — pow
 multi-dimensional weighted scoring, LLM-driven parameter tuning, and incremental user-profile consolidation.
 
 > Extracted as a standalone package from the production
-> project [fireflymall-ai-customer-service](https://github.com/lijia-ming/fireflymall-ai-customer-service). Works
+> project [fireflymall-ai-customer-service](https://github.com/ljm-codes/fireflymall-ai-customer-service). Works
 > offline
 > out of the box — **zero external services required** for tests and demo; Redis / RabbitMQ / real embeddings are
 > optional
@@ -79,7 +79,7 @@ weighting adapts to what the user is talking about.
 ```bash
 pip install memory-middleware           # from PyPI
 # or from source:
-git clone https://github.com/lijia-ming/memory-middleware.git && cd memory-middleware
+git clone https://github.com/ljm-codes/memory-middleware.git && cd memory-middleware
 pip install -e ".[dev]"
 python examples/quickstart_offline.py   # fully offline, scripted models
 pytest                                  # 115 offline tests, no services, <1s (3 integration cases need -m integration)
@@ -410,7 +410,7 @@ Key fields of `MemoryConfig` (see `memory_middleware/config.py` for all):
 ## Upstream project
 
 This package is a decoupled extraction of the memory middleware that powers
-[fireflymall-ai-customer-service](https://github.com/lijia-ming/fireflymall-ai-customer-service)
+[fireflymall-ai-customer-service](https://github.com/ljm-codes/fireflymall-ai-customer-service)
 — a production intelligent customer-service agent (LangGraph + DeepSeek). The upstream
 repo contains the business-coupled version (Redis / RabbitMQ / DashScope wiring) plus
 the reproducible cache-rate benchmark (`tests/bench_cache_rate.py`, raw data in
